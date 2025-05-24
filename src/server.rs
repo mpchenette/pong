@@ -226,8 +226,8 @@ fn main() {
     });
 
     // Start HTTP server using std only
-    let listener = TcpListener::bind("127.0.0.1:3031").unwrap();
-    println!("Server running on http://127.0.0.1:3031");
+    let listener = TcpListener::bind("127.0.0.1:8000").unwrap();
+    println!("Server running on http://127.0.0.1:8000");
 
     for stream in listener.incoming() {
         let stream = stream.unwrap();
