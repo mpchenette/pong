@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Block Breaker Simulation</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #222;
+            color: white;
+            font-family: monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        canvas {
+            border: 2px solid #444;
+            background: black;
+        }
+        .info {
+            margin: 20px 0;
+            text-align: center;
+        }
+        .status {
+            margin: 10px 0;
+            padding: 10px;
+            background: #333;
+            border-radius: 5px;
+        }
+        .count-info {
+            display: flex;
+            gap: 20px;
+            margin: 10px 0;
+        }
+        .count-item {
+            background: #333;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            background: #ff6666;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #ff4444;
+        }
+    </style>
+</head>
+<body>
+    <h1>Block Breaker Simulation</h1>
+    <div class="info">
+        <p>Watch 2 balls bounce around a 10x10 grid of blocks!</p>
+        <p>White ball (left) hits navy blue blocks, Black ball (right) hits navy grey blocks</p>
+        <div class="count-info">
+            <div class="count-item">Navy Grey: <span id="navyGreyCount">50</span></div>
+            <div class="count-item">Navy Blue: <span id="navyBlueCount">50</span></div>
+        </div>
+        <div id="status" class="status">Connecting...</div>
+    </div>
+    
+    <canvas id="gameCanvas" width="400" height="400"></canvas>
+    
+    <div class="info">
+        <button onclick="resetGame()">Reset Game</button>
+    </div>
+
+    <script>
+        // Pure JavaScript client for Block Breaker simulation
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const statusDiv = document.getElementById('status');
+        const navyGreySpan = document.getElementById('navyGreyCount');
+        const navyBlueSpan = document.getElementById('navyBlueCount');
+
+        // HTTP polling connection to Rust server
+        let gameState = null;
+
+        function fetchGameState() {
+            fetch('/game-state')
+                .then(response => response.json())
+                .then(data => {
+                    gameState = data;
+                    draw();
+                    updateUI();
+                })
+                .catch(error => {
+                    console.error('Error fetching game state:', error);
+                    statusDiv.textContent = 'Error connecting to server';
+                });
+        }
+
+        // Start polling every 16ms (~60 FPS)
+        setInterval(fetchGameState, 16);
+        statusDiv.textContent = 'Connected! Watching simulation...';
+
+        function draw() {
+            if (!gameState) return;
+
+            // Clear canvas
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(0, 0, 400, 400);
+
+            // Draw blocks
+            gameState.blocks.forEach(row => {
+                row.forEach(block => {
+                    // Convert RGB array to CSS color
+                    ctx.fillStyle = `rgb(${block.color[0]}, ${block.color[1]}, ${block.color[2]})`;
+                    ctx.fillRect(block.x, block.y, 40, 40);
+                    
+                    // Add a slight border effect
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.lineWidth = 1;
+                    ctx.strokeRect(block.x, block.y, 40, 40);
+                });
+            });
+
+            // Draw balls
+            gameState.balls.forEach(ball => {
+                ctx.fillStyle = `rgb(${ball.color[0]}, ${ball.color[1]}, ${ball.color[2]})`;
+                ctx.fillRect(ball.x, ball.y, 10, 10);
+                
+                // Add a border to make balls more visible
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(ball.x, ball.y, 10, 10);
+            });
+        }
+
+        function updateUI() {
+            if (!gameState) return;
+            
+            navyGreySpan.textContent = gameState.navy_grey_count;
+            navyBlueSpan.textContent = gameState.navy_blue_count;
+            
+            statusDiv.textContent = `Simulation running - ${gameState.navy_grey_count + gameState.navy_blue_count} total blocks`;
+        }
+
+        // Add reset button functionality
+        function resetGame() {
+            fetch('/reset')
+                .then(() => {
+                    statusDiv.textContent = 'Game reset! Simulation restarted...';
+                })
+                .catch(error => {
+                    console.error('Error resetting game:', error);
+                });
+        }
+    </script>
+</body>
+</html>
