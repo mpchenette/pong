@@ -1,0 +1,28 @@
+[package]
+name = "pong"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+yew = { version = "0.21", features = ["csr"] }
+web-sys = { version = "0.3", features = [
+  "console",
+  "CanvasRenderingContext2d",
+  "Element",
+  "HtmlCanvasElement",
+  "KeyboardEvent",
+  "Window",
+  "Document",
+  "EventTarget",
+] }
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+gloo = { version = "0.11", features = ["timers"] }
+js-sys = "0.3"
+
+[dependencies.getrandom]
+version = "0.2"
+features = ["js"]
