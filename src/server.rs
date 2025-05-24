@@ -7,26 +7,26 @@ use std::time::{Duration, Instant};
 // Game constants
 const BLOCK_SIZE: f64 = 40.0;
 const GRID_SIZE: usize = 10;
-const CANVAS_WIDTH: f64 = GRID_SIZE as f64 * BLOCK_SIZE; // Exactly 400.0
+const CANVAS_WIDTH: f64 = GRID_SIZE as f64 * BLOCK_SIZE;  // Exactly 400.0
 const CANVAS_HEIGHT: f64 = GRID_SIZE as f64 * BLOCK_SIZE; // Exactly 400.0
 const BALL_SIZE: f64 = 10.0;
 
 // Colors
-const NAVY_GREY: (u8, u8, u8) = (70, 80, 90); // Navy grey for left half
-const NAVY_BLUE: (u8, u8, u8) = (30, 50, 120); // Navy blue for right half
-const WHITE: (u8, u8, u8) = (255, 255, 255); // White ball (left)
-const BLACK: (u8, u8, u8) = (0, 0, 0); // Black ball (right)
+const NAVY_GREY: (u8, u8, u8) = (70, 80, 90);    // Navy grey for left half
+const NAVY_BLUE: (u8, u8, u8) = (30, 50, 120);   // Navy blue for right half
+const WHITE: (u8, u8, u8) = (255, 255, 255);     // White ball (left)
+const BLACK: (u8, u8, u8) = (0, 0, 0);           // Black ball (right)
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 enum BlockColor {
     NavyGrey,
     NavyBlue,
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 enum BallType {
-    White, // Can hit navy blue blocks
-    Black, // Can hit navy grey blocks
+    White,  // Can hit navy blue blocks
+    Black,  // Can hit navy grey blocks
 }
 
 #[derive(Clone)]
@@ -362,4 +362,197 @@ fn handle_connection(mut stream: TcpStream, game: Arc<Mutex<Game>>) {
 
     stream.write_all(response.as_bytes()).unwrap();
     stream.flush().unwrap();
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_game_initialization() {
+        let game = Game::new();
+
+        // Should have 2 balls
+        assert_eq!(game.balls.len(), 2);
+
+        // Check initial ball positions
+        let white_ball = &game.balls[0];
+        let black_ball = &game.balls[1];
+
+        assert_eq!(white_ball.ball_type, BallType::White);
+        assert_eq!(black_ball.ball_type, BallType::Black);
+
+        // White ball should start on left side
+        assert!(white_ball.x < CANVAS_WIDTH / 2.0);
+        // Black ball should start on right side
+        assert!(black_ball.x > CANVAS_WIDTH / 2.0);
+
+        // Should have 10x10 grid
+        assert_eq!(game.blocks.len(), 10);
+        assert_eq!(game.blocks[0].len(), 10);
+
+        // Initial counts should be 50 each
+        assert_eq!(game.navy_grey_count, 50);
+        assert_eq!(game.navy_blue_count, 50);
+
+        // Check initial block colors
+        // Left half should be navy grey
+        for row in &game.blocks {
+            for (col, block) in row.iter().enumerate() {
+                if col < 5 {
+                    assert_eq!(block.color, BlockColor::NavyGrey);
+                } else {
+                    assert_eq!(block.color, BlockColor::NavyBlue);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn test_ball_wall_collision() {
+        let mut game = Game::new();
+
+        // Set up ball to hit left wall
+        game.balls[0].x = 0.0;
+        game.balls[0].y = 100.0;
+        game.balls[0].dx = -2.0;
+        game.balls[0].dy = 1.0;
+
+        game.update();
+
+        // Ball should bounce off left wall
+        assert_eq!(game.balls[0].x, 0.0);
+        assert_eq!(game.balls[0].dx, 2.0); // Should reverse direction
+        assert_eq!(game.balls[0].dy, 1.0); // Y velocity unchanged
+    }
+
+    #[test]
+    fn test_ball_top_wall_collision() {
+        let mut game = Game::new();
+
+        // Set up ball to hit top wall
+        game.balls[0].x = 100.0;
+        game.balls[0].y = 0.0;
+        game.balls[0].dx = 1.0;
+        game.balls[0].dy = -2.0;
+
+        game.update();
+
+        // Ball should bounce off top wall
+        assert_eq!(game.balls[0].y, 0.0);
+        assert_eq!(game.balls[0].dx, 1.0); // X velocity unchanged
+        assert_eq!(game.balls[0].dy, 2.0); // Should reverse direction
+    }
+
+    #[test]
+    fn test_white_ball_hits_navy_blue_block() {
+        let mut game = Game::new();
+
+        // Position white ball to hit a navy blue block (right side)
+        game.balls[0].x = 200.0 - BALL_SIZE; // Just left of block at (200, 0)
+        game.balls[0].y = 0.0;
+        game.balls[0].dx = 2.0;
+        game.balls[0].dy = 0.0;
+        game.balls[0].ball_type = BallType::White;
+
+        // Ensure there's a navy blue block where we expect
+        assert_eq!(game.blocks[0][5].color, BlockColor::NavyBlue);
+        let initial_navy_blue = game.navy_blue_count;
+        let initial_navy_grey = game.navy_grey_count;
+
+        game.update();
+
+        // Block should convert to navy grey
+        assert_eq!(game.blocks[0][5].color, BlockColor::NavyGrey);
+        assert_eq!(game.navy_blue_count, initial_navy_blue - 1);
+        assert_eq!(game.navy_grey_count, initial_navy_grey + 1);
+
+        // Ball should bounce back
+        assert!(game.balls[0].dx < 0.0);
+    }
+
+    #[test]
+    fn test_black_ball_hits_navy_grey_block() {
+        let mut game = Game::new();
+
+        // Position black ball to hit a navy grey block (left side)
+        game.balls[1].x = BLOCK_SIZE; // Just right of block at (0, 0)
+        game.balls[1].y = 0.0;
+        game.balls[1].dx = -2.0;
+        game.balls[1].dy = 0.0;
+        game.balls[1].ball_type = BallType::Black;
+
+        // Ensure there's a navy grey block where we expect
+        assert_eq!(game.blocks[0][0].color, BlockColor::NavyGrey);
+        let initial_navy_blue = game.navy_blue_count;
+        let initial_navy_grey = game.navy_grey_count;
+
+        game.update();
+
+        // Block should convert to navy blue
+        assert_eq!(game.blocks[0][0].color, BlockColor::NavyBlue);
+        assert_eq!(game.navy_blue_count, initial_navy_blue + 1);
+        assert_eq!(game.navy_grey_count, initial_navy_grey - 1);
+
+        // Ball should bounce back
+        assert!(game.balls[1].dx > 0.0);
+    }
+
+    #[test]
+    fn test_white_ball_ignores_navy_grey_block() {
+        let mut game = Game::new();
+
+        // Position white ball to pass through a navy grey block (left side)
+        game.balls[0].x = 0.0;
+        game.balls[0].y = 0.0;
+        game.balls[0].dx = 2.0;
+        game.balls[0].dy = 0.0;
+        game.balls[0].ball_type = BallType::White;
+
+        let initial_navy_grey = game.navy_grey_count;
+        let initial_navy_blue = game.navy_blue_count;
+
+        game.update();
+
+        // Block should remain unchanged
+        assert_eq!(game.blocks[0][0].color, BlockColor::NavyGrey);
+        assert_eq!(game.navy_grey_count, initial_navy_grey);
+        assert_eq!(game.navy_blue_count, initial_navy_blue);
+
+        // Ball should continue moving (not bounce)
+        assert!(game.balls[0].dx > 0.0);
+    }
+
+    #[test]
+    fn test_json_serialization_structure() {
+        let game = Game::new();
+        let json = game.to_json();
+
+        // Should contain required fields
+        assert!(json.contains("\"balls\":"));
+        assert!(json.contains("\"blocks\":"));
+        assert!(json.contains("\"navy_grey_count\":"));
+        assert!(json.contains("\"navy_blue_count\":"));
+
+        // Should contain initial counts
+        assert!(json.contains("\"navy_grey_count\":50"));
+        assert!(json.contains("\"navy_blue_count\":50"));
+    }
+
+    #[test]
+    fn test_ball_positions_stay_in_bounds() {
+        let mut game = Game::new();
+
+        // Run many updates to ensure balls stay in bounds
+        for _ in 0..1000 {
+            game.update();
+
+            for ball in &game.balls {
+                assert!(ball.x >= 0.0);
+                assert!(ball.y >= 0.0);
+                assert!(ball.x <= CANVAS_WIDTH - BALL_SIZE);
+                assert!(ball.y <= CANVAS_HEIGHT - BALL_SIZE);
+            }
+        }
+    }
 }
