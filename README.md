@@ -1,25 +1,26 @@
-# Rust Pong Game
+# Block Converter Game
 
-A classic Pong game implemented in Rust using the Yew framework, compiled to WebAssembly for the web.
+A simple block conversion game implemented in Rust using the Yew framework, compiled to WebAssembly for the web.
+
+## What it is
+
+Two balls bounce around a grid, each trying to convert blocks to their color:
+- **White ball**: Converts blue blocks to grey
+- **Black ball**: Converts grey blocks to blue
+
+The game starts with a 10x10 grid split evenly between grey (left) and blue (right) blocks.
 
 ## Features
 
-- **Pure Rust Implementation**: Built with Rust and compiled to WebAssembly
-- **Modern Web Framework**: Uses Yew for reactive UI components
-- **Smooth Gameplay**: 60 FPS game loop with canvas rendering
-- **Two-Player Controls**: 
-  - Left Player: W/S keys
-  - Right Player: Arrow Up/Down keys
-- **Game Features**:
-  - Real-time scoring
-  - Pause/Resume functionality
-  - Game reset
-  - Responsive design
-  - Beautiful modern UI
+- **Pure Rust**: Built with Rust and compiled to WebAssembly
+- **Modern Framework**: Uses Yew for reactive UI
+- **Smooth Animation**: 60 FPS game loop with canvas rendering
+- **Real-time Scoring**: Live count of each color's blocks
+- **Simple Controls**: Just click Reset to restart
 
 ## Quick Start
 
-1. **Install Dependencies** (if not already installed):
+1. **Install Dependencies**:
    ```bash
    # Install Rust
    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
@@ -33,21 +34,32 @@ A classic Pong game implemented in Rust using the Yew framework, compiled to Web
    ./run.sh
    ```
    
-   This will:
-   - Build the Rust project to WebAssembly
-   - Start a local development server
-   - Open the game at `http://localhost:8000`
+   This will build the project and start a server at `http://localhost:8000`
 
-3. **Manual Build** (alternative):
+3. **Manual Build**:
    ```bash
-   # Build the project
    wasm-pack build --target web --out-dir pkg
-   
-   # Serve the files (choose one)
    python3 -m http.server 8000
-   # or
-   npx serve .
-   # or use any static file server
+   ```
+
+## Project Structure
+
+```
+├── src/
+│   ├── lib.rs          # Main app component
+│   └── game.rs         # Game logic and rendering
+├── index.html          # Web page
+├── styles.css          # Styling
+├── Cargo.toml          # Rust dependencies
+└── run.sh              # Build and run script
+```
+
+## Technology
+
+- **Rust** - Systems programming language
+- **Yew** - Modern Rust framework for web apps
+- **WebAssembly** - High-performance web execution
+- **Canvas API** - 2D graphics rendering
    ```
 
 ## How to Play
