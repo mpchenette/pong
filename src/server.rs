@@ -7,15 +7,15 @@ use std::time::{Duration, Instant};
 // Game constants
 const BLOCK_SIZE: f64 = 40.0;
 const GRID_SIZE: usize = 10;
-const CANVAS_WIDTH: f64 = GRID_SIZE as f64 * BLOCK_SIZE;  // Exactly 400.0
+const CANVAS_WIDTH: f64 = GRID_SIZE as f64 * BLOCK_SIZE; // Exactly 400.0
 const CANVAS_HEIGHT: f64 = GRID_SIZE as f64 * BLOCK_SIZE; // Exactly 400.0
 const BALL_SIZE: f64 = 10.0;
 
 // Colors
-const NAVY_GREY: (u8, u8, u8) = (70, 80, 90);    // Navy grey for left half
-const NAVY_BLUE: (u8, u8, u8) = (30, 50, 120);   // Navy blue for right half
-const WHITE: (u8, u8, u8) = (255, 255, 255);     // White ball (left)
-const BLACK: (u8, u8, u8) = (0, 0, 0);           // Black ball (right)
+const NAVY_GREY: (u8, u8, u8) = (70, 80, 90); // Navy grey for left half
+const NAVY_BLUE: (u8, u8, u8) = (30, 50, 120); // Navy blue for right half
+const WHITE: (u8, u8, u8) = (255, 255, 255); // White ball (left)
+const BLACK: (u8, u8, u8) = (0, 0, 0); // Black ball (right)
 
 #[derive(Clone, Copy, PartialEq)]
 enum BlockColor {
@@ -25,8 +25,8 @@ enum BlockColor {
 
 #[derive(Clone, Copy, PartialEq)]
 enum BallType {
-    White,  // Can hit navy blue blocks
-    Black,  // Can hit navy grey blocks
+    White, // Can hit navy blue blocks
+    Black, // Can hit navy grey blocks
 }
 
 #[derive(Clone)]
@@ -57,7 +57,7 @@ impl Game {
     fn new() -> Self {
         // Create 2 balls
         let white_ball = Ball {
-            x: CANVAS_WIDTH / 4.0,  // Start on left side
+            x: CANVAS_WIDTH / 4.0, // Start on left side
             y: CANVAS_HEIGHT / 2.0,
             dx: 2.0,
             dy: 1.5,
@@ -65,7 +65,7 @@ impl Game {
         };
 
         let black_ball = Ball {
-            x: 3.0 * CANVAS_WIDTH / 4.0,  // Start on right side
+            x: 3.0 * CANVAS_WIDTH / 4.0, // Start on right side
             y: CANVAS_HEIGHT / 2.0,
             dx: -2.0,
             dy: -1.5,
@@ -112,7 +112,7 @@ impl Game {
             // Store previous position for collision response
             let prev_x = ball.x;
             let prev_y = ball.y;
-            
+
             // Calculate new position
             let new_x = ball.x + ball.dx;
             let new_y = ball.y + ball.dy;
@@ -144,12 +144,14 @@ impl Game {
             let mut hit_block = false;
             for row in &mut self.blocks {
                 for block in row {
-                    if hit_block { break; }
-                    
+                    if hit_block {
+                        break;
+                    }
+
                     // Check if ball can interact with this block
                     let can_interact = match (ball.ball_type, block.color) {
-                        (BallType::White, BlockColor::NavyBlue) => true,   // White ball hits navy blue blocks
-                        (BallType::Black, BlockColor::NavyGrey) => true,   // Black ball hits navy grey blocks
+                        (BallType::White, BlockColor::NavyBlue) => true, // White ball hits navy blue blocks
+                        (BallType::Black, BlockColor::NavyGrey) => true, // Black ball hits navy grey blocks
                         _ => false,
                     };
 
@@ -159,16 +161,18 @@ impl Game {
                         let ball_right = final_x + BALL_SIZE;
                         let ball_top = final_y;
                         let ball_bottom = final_y + BALL_SIZE;
-                        
+
                         let block_left = block.x;
                         let block_right = block.x + BLOCK_SIZE;
                         let block_top = block.y;
                         let block_bottom = block.y + BLOCK_SIZE;
 
                         // AABB collision detection
-                        if ball_right >= block_left && ball_left <= block_right &&
-                           ball_bottom >= block_top && ball_top <= block_bottom {
-                            
+                        if ball_right >= block_left
+                            && ball_left <= block_right
+                            && ball_bottom >= block_top
+                            && ball_top <= block_bottom
+                        {
                             // Convert block to the other color
                             match block.color {
                                 BlockColor::NavyGrey => {
@@ -190,10 +194,14 @@ impl Game {
                             let prev_ball_bottom = prev_y + BALL_SIZE;
 
                             // Check which side was hit by comparing previous and current positions
-                            let hit_from_left = prev_ball_right <= block_left && ball_right >= block_left;
-                            let hit_from_right = prev_ball_left >= block_right && ball_left <= block_right;
-                            let hit_from_top = prev_ball_bottom <= block_top && ball_bottom >= block_top;
-                            let hit_from_bottom = prev_ball_top >= block_bottom && ball_top <= block_bottom;
+                            let hit_from_left =
+                                prev_ball_right <= block_left && ball_right >= block_left;
+                            let hit_from_right =
+                                prev_ball_left >= block_right && ball_left <= block_right;
+                            let hit_from_top =
+                                prev_ball_bottom <= block_top && ball_bottom >= block_top;
+                            let hit_from_bottom =
+                                prev_ball_top >= block_bottom && ball_top <= block_bottom;
 
                             if hit_from_left || hit_from_right {
                                 // Horizontal collision
@@ -222,7 +230,9 @@ impl Game {
                         }
                     }
                 }
-                if hit_block { break; }
+                if hit_block {
+                    break;
+                }
             }
 
             // Update ball position and velocity
@@ -290,7 +300,8 @@ fn main() {
         let mut last_update = Instant::now();
         loop {
             let now = Instant::now();
-            if now.duration_since(last_update) >= Duration::from_millis(16) { // ~60 FPS
+            if now.duration_since(last_update) >= Duration::from_millis(16) {
+                // ~60 FPS
                 game_clone.lock().unwrap().update();
                 last_update = now;
             }
@@ -305,7 +316,7 @@ fn main() {
     for stream in listener.incoming() {
         let stream = stream.unwrap();
         let game_clone = Arc::clone(&game);
-        
+
         thread::spawn(move || {
             handle_connection(stream, game_clone);
         });
@@ -314,15 +325,14 @@ fn main() {
 
 fn handle_connection(mut stream: TcpStream, game: Arc<Mutex<Game>>) {
     let mut buffer = [0; 1024];
-    stream.read(&mut buffer).unwrap();
+    let _ = stream.read(&mut buffer).unwrap();
 
     let request = String::from_utf8_lossy(&buffer[..]);
     let request_line = request.lines().next().unwrap_or("");
-    
-    // Debug logging
-    println!("Request line: '{}'", request_line);
-    
-    let (status_line, content_type, body) = if request_line.starts_with("GET /") && (request_line.starts_with("GET / ") || request_line == "GET /") {
+
+    let (status_line, content_type, body) = if request_line.starts_with("GET /")
+        && (request_line.starts_with("GET / ") || request_line == "GET /")
+    {
         // Serve the HTML page
         let html_content = include_str!("../static/index.html");
         ("HTTP/1.1 200 OK", "text/html", html_content.to_string())
@@ -335,7 +345,11 @@ fn handle_connection(mut stream: TcpStream, game: Arc<Mutex<Game>>) {
         *game.lock().unwrap() = Game::new();
         ("HTTP/1.1 200 OK", "text/plain", "Game reset".to_string())
     } else {
-        ("HTTP/1.1 404 NOT FOUND", "text/plain", "404 Not Found".to_string())
+        (
+            "HTTP/1.1 404 NOT FOUND",
+            "text/plain",
+            "404 Not Found".to_string(),
+        )
     };
 
     let response = format!(
@@ -346,6 +360,6 @@ fn handle_connection(mut stream: TcpStream, game: Arc<Mutex<Game>>) {
         body
     );
 
-    stream.write(response.as_bytes()).unwrap();
+    stream.write_all(response.as_bytes()).unwrap();
     stream.flush().unwrap();
 }

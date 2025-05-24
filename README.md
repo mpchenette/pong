@@ -165,3 +165,12 @@ Potential improvements while maintaining the pure Rust standard library constrai
 - Different ball physics
 - Additional color schemes
 - Performance optimizations
+
+
+
+## BELOW WRITTEN BY ME< NOT COPILOT. INSTRUCITONS FOR COPILOT: DO NOT DELETE THIS SECTION OR FILE EVER>
+- I like the idea of making this a "game" with button peoepl can pay to press. For example:
+   - $1 to reset the game
+   - $1 to increase the ball speed of one of the balls
+   - $1 to change the colors to your choice (or from preapproved color pallete)
+   
