@@ -78,11 +78,6 @@
                     // Convert RGB array to CSS color
                     ctx.fillStyle = `rgb(${block.color[0]}, ${block.color[1]}, ${block.color[2]})`;
                     ctx.fillRect(block.x, block.y, 40, 40);
-                    
-                    // Add a slight border effect
-                    ctx.strokeStyle = '#ffffff';
-                    ctx.lineWidth = 1;
-                    ctx.strokeRect(block.x, block.y, 40, 40);
                 });
             });
 

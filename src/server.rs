@@ -109,21 +109,43 @@ impl Game {
     fn update(&mut self) {
         // Update each ball
         for ball in &mut self.balls {
-            // Update ball position
-            ball.x += ball.dx;
-            ball.y += ball.dy;
+            // Store previous position for collision response
+            let prev_x = ball.x;
+            let prev_y = ball.y;
+            
+            // Calculate new position
+            let new_x = ball.x + ball.dx;
+            let new_y = ball.y + ball.dy;
 
             // Ball collision with walls
-            if ball.x <= 0.0 || ball.x >= CANVAS_WIDTH - BALL_SIZE {
-                ball.dx = -ball.dx;
-            }
-            if ball.y <= 0.0 || ball.y >= CANVAS_HEIGHT - BALL_SIZE {
-                ball.dy = -ball.dy;
+            let mut final_x = new_x;
+            let mut final_y = new_y;
+            let mut final_dx = ball.dx;
+            let mut final_dy = ball.dy;
+
+            // Wall collision with proper positioning
+            if new_x <= 0.0 {
+                final_x = 0.0;
+                final_dx = -ball.dx;
+            } else if new_x >= CANVAS_WIDTH - BALL_SIZE {
+                final_x = CANVAS_WIDTH - BALL_SIZE;
+                final_dx = -ball.dx;
             }
 
-            // Check collision with blocks
+            if new_y <= 0.0 {
+                final_y = 0.0;
+                final_dy = -ball.dy;
+            } else if new_y >= CANVAS_HEIGHT - BALL_SIZE {
+                final_y = CANVAS_HEIGHT - BALL_SIZE;
+                final_dy = -ball.dy;
+            }
+
+            // Check collision with blocks using swept collision detection
+            let mut hit_block = false;
             for row in &mut self.blocks {
                 for block in row {
+                    if hit_block { break; }
+                    
                     // Check if ball can interact with this block
                     let can_interact = match (ball.ball_type, block.color) {
                         (BallType::White, BlockColor::NavyBlue) => true,   // White ball hits navy blue blocks
@@ -131,32 +153,83 @@ impl Game {
                         _ => false,
                     };
 
-                    if can_interact
-                        && ball.x + BALL_SIZE >= block.x
-                        && ball.x <= block.x + BLOCK_SIZE
-                        && ball.y + BALL_SIZE >= block.y
-                        && ball.y <= block.y + BLOCK_SIZE
-                    {
-                        // Convert block to the other color
-                        match block.color {
-                            BlockColor::NavyGrey => {
-                                block.color = BlockColor::NavyBlue;
-                                self.navy_grey_count -= 1;
-                                self.navy_blue_count += 1;
-                            }
-                            BlockColor::NavyBlue => {
-                                block.color = BlockColor::NavyGrey;
-                                self.navy_blue_count -= 1;
-                                self.navy_grey_count += 1;
-                            }
-                        }
+                    if can_interact {
+                        // Check if ball will collide with block
+                        let ball_left = final_x;
+                        let ball_right = final_x + BALL_SIZE;
+                        let ball_top = final_y;
+                        let ball_bottom = final_y + BALL_SIZE;
+                        
+                        let block_left = block.x;
+                        let block_right = block.x + BLOCK_SIZE;
+                        let block_top = block.y;
+                        let block_bottom = block.y + BLOCK_SIZE;
 
-                        // Bounce the ball
-                        ball.dy = -ball.dy;
-                        break;
+                        // AABB collision detection
+                        if ball_right >= block_left && ball_left <= block_right &&
+                           ball_bottom >= block_top && ball_top <= block_bottom {
+                            
+                            // Convert block to the other color
+                            match block.color {
+                                BlockColor::NavyGrey => {
+                                    block.color = BlockColor::NavyBlue;
+                                    self.navy_grey_count -= 1;
+                                    self.navy_blue_count += 1;
+                                }
+                                BlockColor::NavyBlue => {
+                                    block.color = BlockColor::NavyGrey;
+                                    self.navy_blue_count -= 1;
+                                    self.navy_grey_count += 1;
+                                }
+                            }
+
+                            // Determine collision side and bounce accordingly
+                            let prev_ball_left = prev_x;
+                            let prev_ball_right = prev_x + BALL_SIZE;
+                            let prev_ball_top = prev_y;
+                            let prev_ball_bottom = prev_y + BALL_SIZE;
+
+                            // Check which side was hit by comparing previous and current positions
+                            let hit_from_left = prev_ball_right <= block_left && ball_right >= block_left;
+                            let hit_from_right = prev_ball_left >= block_right && ball_left <= block_right;
+                            let hit_from_top = prev_ball_bottom <= block_top && ball_bottom >= block_top;
+                            let hit_from_bottom = prev_ball_top >= block_bottom && ball_top <= block_bottom;
+
+                            if hit_from_left || hit_from_right {
+                                // Horizontal collision
+                                final_dx = -ball.dx;
+                                if hit_from_left {
+                                    final_x = block_left - BALL_SIZE;
+                                } else {
+                                    final_x = block_right;
+                                }
+                            } else if hit_from_top || hit_from_bottom {
+                                // Vertical collision
+                                final_dy = -ball.dy;
+                                if hit_from_top {
+                                    final_y = block_top - BALL_SIZE;
+                                } else {
+                                    final_y = block_bottom;
+                                }
+                            } else {
+                                // Corner collision - bounce both directions
+                                final_dx = -ball.dx;
+                                final_dy = -ball.dy;
+                            }
+
+                            hit_block = true;
+                            break;
+                        }
                     }
                 }
+                if hit_block { break; }
             }
+
+            // Update ball position and velocity
+            ball.x = final_x;
+            ball.y = final_y;
+            ball.dx = final_dx;
+            ball.dy = final_dy;
         }
     }
 
