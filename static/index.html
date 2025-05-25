@@ -24,16 +24,21 @@
             margin: 10px 0;
         }
         .count-item {
-            background: #333;
-            padding: 10px;
-            border-radius: 5px;
+            font-weight: bold;
+            font-size: 18px;
+        }
+        .navy-grey-count {
+            color: rgb(70, 80, 90);
+        }
+        .navy-blue-count {
+            color: rgb(30, 50, 120);
         }
     </style>
 </head>
 <body>
     <div class="count-info">
-        <div class="count-item"><span id="navyGreyCount">50</span></div>
-        <div class="count-item"><span id="navyBlueCount">50</span></div>
+        <div class="count-item navy-grey-count"><span id="navyGreyCount">50</span></div>
+        <div class="count-item navy-blue-count"><span id="navyBlueCount">50</span></div>
     </div>
     
     <canvas id="gameCanvas" width="400" height="400"></canvas>

@@ -173,4 +173,14 @@ Potential improvements while maintaining the pure Rust standard library constrai
    - $1 to reset the game
    - $1 to increase the ball speed of one of the balls
    - $1 to change the colors to your choice (or from preapproved color pallete)
+   - $1 to convert all blocks to checkerboard/chess board
+   - $1 to make ball icon of your choice for 1 min
+   - $1 to change team name
    
+- could have a global feed of all the changes. e.g. "matthew c. increased ball speed"
+
+
+## TODO
+- add total # of blocks converted lifetime total
+- add changeable side/team name (pay to change)
+- add stripe payment solution
