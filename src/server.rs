@@ -3,6 +3,7 @@ use std::net::{TcpListener, TcpStream};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
+use std::collections::HashMap;
 
 // Game constants
 const BLOCK_SIZE: f64 = 40.0;
@@ -291,9 +292,166 @@ impl Game {
     }
 }
 
+// WebSocket implementation using only std library
+mod websocket {
+    use std::io::Write;
+    use std::net::TcpStream;
+    
+    pub fn generate_accept_key(key: &str) -> String {
+        // RFC 6455: Concatenate key with WebSocket GUID and compute SHA-1 hash
+        const WEBSOCKET_GUID: &str = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
+        let concat = format!("{}{}", key, WEBSOCKET_GUID);
+        let hash = sha1(&concat.as_bytes());
+        base64_encode(&hash)
+    }
+    
+    // Simple SHA-1 implementation using only std library
+    fn sha1(input: &[u8]) -> [u8; 20] {
+        // Initialize hash values (from SHA-1 spec)
+        let mut h = [
+            0x67452301u32,
+            0xEFCDAB89u32,
+            0x98BADCFEu32,
+            0x10325476u32,
+            0xC3D2E1F0u32,
+        ];
+        
+        // Pre-processing: adding padding bits
+        let mut message = input.to_vec();
+        let original_len = message.len();
+        message.push(0x80); // append bit '1' followed by zeros
+        
+        // Pad to 512 bits (64 bytes) minus 64 bits (8 bytes) for length
+        while (message.len() % 64) != 56 {
+            message.push(0x00);
+        }
+        
+        // Append original length in bits as 64-bit big-endian
+        let bit_len = (original_len as u64) * 8;
+        message.extend_from_slice(&bit_len.to_be_bytes());
+        
+        // Process message in 512-bit chunks
+        for chunk in message.chunks(64) {
+            let mut w = [0u32; 80];
+            
+            // Break chunk into sixteen 32-bit words
+            for i in 0..16 {
+                w[i] = u32::from_be_bytes([
+                    chunk[i * 4],
+                    chunk[i * 4 + 1],
+                    chunk[i * 4 + 2],
+                    chunk[i * 4 + 3],
+                ]);
+            }
+            
+            // Extend the words
+            for i in 16..80 {
+                w[i] = (w[i - 3] ^ w[i - 8] ^ w[i - 14] ^ w[i - 16]).rotate_left(1);
+            }
+            
+            // Initialize working variables
+            let mut a = h[0];
+            let mut b = h[1];
+            let mut c = h[2];
+            let mut d = h[3];
+            let mut e = h[4];
+            
+            // Main loop
+            for i in 0..80 {
+                let (f, k) = match i {
+                    0..=19 => ((b & c) | ((!b) & d), 0x5A827999),
+                    20..=39 => (b ^ c ^ d, 0x6ED9EBA1),
+                    40..=59 => ((b & c) | (b & d) | (c & d), 0x8F1BBCDC),
+                    60..=79 => (b ^ c ^ d, 0xCA62C1D6),
+                    _ => unreachable!(),
+                };
+                
+                let temp = a.rotate_left(5)
+                    .wrapping_add(f)
+                    .wrapping_add(e)
+                    .wrapping_add(k)
+                    .wrapping_add(w[i]);
+                e = d;
+                d = c;
+                c = b.rotate_left(30);
+                b = a;
+                a = temp;
+            }
+            
+            // Update hash values
+            h[0] = h[0].wrapping_add(a);
+            h[1] = h[1].wrapping_add(b);
+            h[2] = h[2].wrapping_add(c);
+            h[3] = h[3].wrapping_add(d);
+            h[4] = h[4].wrapping_add(e);
+        }
+        
+        // Convert to bytes
+        let mut result = [0u8; 20];
+        for (i, &val) in h.iter().enumerate() {
+            let bytes = val.to_be_bytes();
+            result[i * 4..i * 4 + 4].copy_from_slice(&bytes);
+        }
+        
+        result
+    }
+    
+    fn base64_encode(input: &[u8]) -> String {
+        const CHARS: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+        let mut result = String::new();
+        
+        for chunk in input.chunks(3) {
+            let mut buf = [0u8; 3];
+            for (i, &b) in chunk.iter().enumerate() {
+                buf[i] = b;
+            }
+            
+            let b = ((buf[0] as u32) << 16) | ((buf[1] as u32) << 8) | (buf[2] as u32);
+            
+            result.push(CHARS[((b >> 18) & 63) as usize] as char);
+            result.push(CHARS[((b >> 12) & 63) as usize] as char);
+            result.push(if chunk.len() > 1 { CHARS[((b >> 6) & 63) as usize] as char } else { '=' });
+            result.push(if chunk.len() > 2 { CHARS[(b & 63) as usize] as char } else { '=' });
+        }
+        
+        result
+    }
+    
+    pub fn send_text_frame(stream: &mut TcpStream, text: &str) -> std::io::Result<()> {
+        let text_bytes = text.as_bytes();
+        let text_len = text_bytes.len();
+        
+        let mut frame = Vec::new();
+        
+        // FIN (1) + RSV (3) + Opcode (4) = 0x81 for text frame
+        frame.push(0x81);
+        
+        // Payload length
+        if text_len < 126 {
+            frame.push(text_len as u8);
+        } else if text_len < 65536 {
+            frame.push(126);
+            frame.extend_from_slice(&(text_len as u16).to_be_bytes());
+        } else {
+            frame.push(127);
+            frame.extend_from_slice(&(text_len as u64).to_be_bytes());
+        }
+        
+        // Payload data
+        frame.extend_from_slice(text_bytes);
+        
+        stream.write_all(&frame)?;
+        stream.flush()
+    }
+}
+
 fn main() {
     let game = Arc::new(Mutex::new(Game::new()));
+    let clients: Arc<Mutex<HashMap<usize, TcpStream>>> = Arc::new(Mutex::new(HashMap::new()));
+    let client_counter = Arc::new(Mutex::new(0usize));
+    
     let game_clone = Arc::clone(&game);
+    let clients_clone = Arc::clone(&clients);
 
     // Start game loop in separate thread
     thread::spawn(move || {
@@ -303,65 +461,146 @@ fn main() {
             if now.duration_since(last_update) >= Duration::from_millis(16) {
                 // ~60 FPS
                 game_clone.lock().unwrap().update();
+                
+                // Send game state to all connected clients
+                let game_state = game_clone.lock().unwrap().to_json();
+                let mut clients_guard = clients_clone.lock().unwrap();
+                let mut disconnected_clients = Vec::new();
+                
+                for (client_id, stream) in clients_guard.iter_mut() {
+                    // Set a short timeout for writing
+                    if let Ok(_) = stream.set_write_timeout(Some(Duration::from_millis(10))) {
+                        if let Err(_) = websocket::send_text_frame(stream, &game_state) {
+                            disconnected_clients.push(*client_id);
+                        }
+                    } else {
+                        disconnected_clients.push(*client_id);
+                    }
+                }
+                
+                // Remove disconnected clients
+                for client_id in disconnected_clients {
+                    clients_guard.remove(&client_id);
+                    println!("Client {} disconnected", client_id);
+                }
+                
                 last_update = now;
             }
             thread::sleep(Duration::from_millis(1));
         }
     });
 
-    // Start HTTP server using std only
+    // Start WebSocket server
     let listener = TcpListener::bind("127.0.0.1:8000").unwrap();
-    println!("Server running on http://127.0.0.1:8000");
+    println!("WebSocket server running on ws://127.0.0.1:8000");
 
     for stream in listener.incoming() {
         let stream = stream.unwrap();
-        let game_clone = Arc::clone(&game);
+        let clients_clone = Arc::clone(&clients);
+        let client_counter_clone = Arc::clone(&client_counter);
 
         thread::spawn(move || {
-            handle_connection(stream, game_clone);
+            handle_websocket_connection(stream, clients_clone, client_counter_clone);
         });
     }
 }
 
-fn handle_connection(mut stream: TcpStream, game: Arc<Mutex<Game>>) {
-    let mut buffer = [0; 1024];
-    let _ = stream.read(&mut buffer).unwrap();
-
-    let request = String::from_utf8_lossy(&buffer[..]);
-    let request_line = request.lines().next().unwrap_or("");
-
-    let (status_line, content_type, body) = if request_line.starts_with("GET /")
-        && (request_line.starts_with("GET / ") || request_line == "GET /")
-    {
-        // Serve the HTML page
-        let html_content = include_str!("../static/index.html");
-        ("HTTP/1.1 200 OK", "text/html", html_content.to_string())
-    } else if request_line.starts_with("GET /game-state") {
-        // Serve current game state as JSON
-        let game_state = game.lock().unwrap().to_json();
-        ("HTTP/1.1 200 OK", "application/json", game_state)
-    } else if request_line.starts_with("GET /reset") {
-        // Reset game
-        *game.lock().unwrap() = Game::new();
-        ("HTTP/1.1 200 OK", "text/plain", "Game reset".to_string())
-    } else {
-        (
-            "HTTP/1.1 404 NOT FOUND",
-            "text/plain",
-            "404 Not Found".to_string(),
-        )
+fn handle_websocket_connection(
+    mut stream: TcpStream, 
+    clients: Arc<Mutex<HashMap<usize, TcpStream>>>,
+    client_counter: Arc<Mutex<usize>>
+) {
+    let mut buffer = [0; 4096];
+    let bytes_read = match stream.read(&mut buffer) {
+        Ok(n) => n,
+        Err(_) => return,
     };
 
-    let response = format!(
-        "{}\r\nContent-Type: {}\r\nAccess-Control-Allow-Origin: *\r\nContent-Length: {}\r\n\r\n{}",
-        status_line,
-        content_type,
-        body.len(),
-        body
-    );
+    let request = String::from_utf8_lossy(&buffer[..bytes_read]);
+    println!("Received request: {}", request.lines().next().unwrap_or(""));
+    
+    // Check if it's a WebSocket upgrade request
+    if request.contains("Upgrade: websocket") {
+        println!("WebSocket upgrade request detected");
+        // Extract the Sec-WebSocket-Key
+        let key = request
+            .lines()
+            .find(|line| line.starts_with("Sec-WebSocket-Key:"))
+            .and_then(|line| line.split(':').nth(1))
+            .map(|key| key.trim())
+            .unwrap_or("");
 
-    stream.write_all(response.as_bytes()).unwrap();
-    stream.flush().unwrap();
+        let accept_key = websocket::generate_accept_key(key);
+        
+        // Send WebSocket handshake response
+        let response = format!(
+            "HTTP/1.1 101 Switching Protocols\r\n\
+             Upgrade: websocket\r\n\
+             Connection: Upgrade\r\n\
+             Sec-WebSocket-Accept: {}\r\n\r\n",
+            accept_key
+        );
+        
+        if stream.write_all(response.as_bytes()).is_err() {
+            println!("Failed to send WebSocket handshake response");
+            return;
+        }
+        
+        if stream.flush().is_err() {
+            println!("Failed to flush WebSocket handshake response");
+            return;
+        }
+        
+        println!("WebSocket handshake completed successfully");
+        
+        // Add client to the list
+        let client_id = {
+            let mut counter = client_counter.lock().unwrap();
+            *counter += 1;
+            *counter
+        };
+        
+        println!("Client {} connected via WebSocket", client_id);
+        
+        // Clone the stream for the clients map
+        let stream_clone = match stream.try_clone() {
+            Ok(s) => s,
+            Err(e) => {
+                println!("Failed to clone stream: {}", e);
+                return;
+            }
+        };
+        
+        clients.lock().unwrap().insert(client_id, stream_clone);
+        
+        // Send initial game state
+        let game_state = "{}"; // Empty initial state
+        if let Err(_) = websocket::send_text_frame(&mut stream, game_state) {
+            println!("Failed to send initial game state to client {}", client_id);
+        }
+        
+        // The game loop will handle ongoing communication
+        // Keep the connection handler minimal
+        thread::sleep(Duration::from_millis(100)); // Brief delay then exit handler
+        
+    } else if request.contains("GET /") && (request.contains("GET / ") || request.contains("GET /?")) {
+        // Serve HTML page for regular HTTP requests
+        println!("Serving HTML page");
+        let html_content = include_str!("../static/index.html");
+        let response = format!(
+            "HTTP/1.1 200 OK\r\n\
+             Content-Type: text/html\r\n\
+             Content-Length: {}\r\n\r\n{}",
+            html_content.len(),
+            html_content
+        );
+        let _ = stream.write_all(response.as_bytes());
+    } else {
+        // 404 for other requests
+        println!("404 for request: {}", request.lines().next().unwrap_or(""));
+        let response = "HTTP/1.1 404 Not Found\r\n\r\n404 Not Found";
+        let _ = stream.write_all(response.as_bytes());
+    }
 }
 
 #[cfg(test)]

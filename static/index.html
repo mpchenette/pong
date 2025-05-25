@@ -44,30 +44,48 @@
     <canvas id="gameCanvas" width="400" height="400"></canvas>
 
     <script>
-        // Pure JavaScript client for Block Breaker simulation
+        // WebSocket client for Block Breaker simulation
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         const navyGreySpan = document.getElementById('navyGreyCount');
         const navyBlueSpan = document.getElementById('navyBlueCount');
 
-        // HTTP polling connection to Rust server
+        // WebSocket connection to Rust server
         let gameState = null;
+        let socket = null;
 
-        function fetchGameState() {
-            fetch('/game-state')
-                .then(response => response.json())
-                .then(data => {
-                    gameState = data;
+        function connectWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}`;
+            
+            socket = new WebSocket(wsUrl);
+
+            socket.onopen = function(event) {
+                console.log('Connected to WebSocket server');
+            };
+
+            socket.onmessage = function(event) {
+                try {
+                    gameState = JSON.parse(event.data);
                     draw();
                     updateUI();
-                })
-                .catch(error => {
-                    console.error('Error fetching game state:', error);
-                });
+                } catch (error) {
+                    console.error('Error parsing game state:', error);
+                }
+            };
+
+            socket.onclose = function(event) {
+                console.log('WebSocket connection closed, attempting to reconnect...');
+                setTimeout(connectWebSocket, 1000); // Reconnect after 1 second
+            };
+
+            socket.onerror = function(error) {
+                console.error('WebSocket error:', error);
+            };
         }
 
-        // Start polling every 16ms (~60 FPS)
-        setInterval(fetchGameState, 16);
+        // Start WebSocket connection
+        connectWebSocket();
 
         function draw() {
             if (!gameState) return;
