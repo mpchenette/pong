@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Block Breaker Simulation</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #222;
+            color: white;
+            font-family: monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+        }
+        canvas {
+            background: black;
+        }
+        .count-info {
+            display: flex;
+            gap: 20px;
+            margin: 10px 0;
+        }
+        .count-item {
+            font-weight: bold;
+            font-size: 18px;
+        }
+        .navy-grey-count {
+            color: rgb(70, 80, 90);
+        }
+        .navy-blue-count {
+            color: rgb(30, 50, 120);
+        }
+        .randomize-button {
+            position: fixed;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: #4a5568;
+            color: white;
+            border: 2px solid #718096;
+            border-radius: 8px;
+            padding: 12px 16px;
+            font-family: monospace;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .randomize-button:hover {
+            background: #718096;
+            border-color: #a0aec0;
+        }
+        .randomize-button:active {
+            transform: translateY(-50%) scale(0.95);
+        }
+    </style>
+</head>
+<body>
+    <div class="count-info">
+        <div class="count-item navy-grey-count"><span id="navyGreyCount">50</span></div>
+        <div class="count-item navy-blue-count"><span id="navyBlueCount">50</span></div>
+    </div>
+    
+    <canvas id="gameCanvas" width="400" height="400"></canvas>
+
+    <button class="randomize-button" id="randomizeButton">
+        Randomize<br>Background<br><small>(for everyone)</small>
+    </button>
+
+    <script>
+        // WebSocket client for Block Breaker simulation
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const navyGreySpan = document.getElementById('navyGreyCount');
+        const navyBlueSpan = document.getElementById('navyBlueCount');
+        const randomizeButton = document.getElementById('randomizeButton');
+
+        // WebSocket connection to Rust server
+        let gameState = null;
+        let socket = null;
+
+        // Function to generate random color
+        function getRandomColor() {
+            const r = Math.floor(Math.random() * 256);
+            const g = Math.floor(Math.random() * 256);
+            const b = Math.floor(Math.random() * 256);
+            return `rgb(${r}, ${g}, ${b})`;
+        }
+
+        // Add click event listener to randomize button
+        randomizeButton.addEventListener('click', function() {
+            // Send HTTP request to server to randomize background for everyone
+            fetch('/randomize-background')
+                .then(response => {
+                    if (response.ok) {
+                        console.log('Background randomization requested');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error requesting background randomization:', error);
+                });
+        });
+
+        function connectWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}`;
+            
+            socket = new WebSocket(wsUrl);
+
+            socket.onopen = function(event) {
+                console.log('Connected to WebSocket server');
+            };
+
+            socket.onmessage = function(event) {
+                try {
+                    gameState = JSON.parse(event.data);
+                    draw();
+                    updateUI();
+                    updateBackground();
+                } catch (error) {
+                    console.error('Error parsing game state:', error);
+                }
+            };
+
+            socket.onclose = function(event) {
+                console.log('WebSocket connection closed, attempting to reconnect...');
+                setTimeout(connectWebSocket, 1000); // Reconnect after 1 second
+            };
+
+            socket.onerror = function(error) {
+                console.error('WebSocket error:', error);
+            };
+        }
+
+        // Start WebSocket connection
+        connectWebSocket();
+
+        function draw() {
+            if (!gameState) return;
+
+            // Clear canvas
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(0, 0, 400, 400);
+
+            // Draw blocks
+            gameState.blocks.forEach(row => {
+                row.forEach(block => {
+                    // Convert RGB array to CSS color
+                    ctx.fillStyle = `rgb(${block.color[0]}, ${block.color[1]}, ${block.color[2]})`;
+                    ctx.fillRect(block.x, block.y, 40, 40);
+                });
+            });
+
+            // Draw balls
+            gameState.balls.forEach(ball => {
+                ctx.fillStyle = `rgb(${ball.color[0]}, ${ball.color[1]}, ${ball.color[2]})`;
+                ctx.fillRect(ball.x, ball.y, 10, 10);
+                
+                // Add a border to make balls more visible
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(ball.x, ball.y, 10, 10);
+            });
+        }
+
+        function updateUI() {
+            if (!gameState) return;
+            
+            navyGreySpan.textContent = gameState.navy_grey_count;
+            navyBlueSpan.textContent = gameState.navy_blue_count;
+        }
+
+        function updateBackground() {
+            if (!gameState || !gameState.background_color) return;
+            
+            const [r, g, b] = gameState.background_color;
+            document.body.style.background = `rgb(${r}, ${g}, ${b})`;
+        }
+    </script>
+</body>
+</html>

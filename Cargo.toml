@@ -1,0 +1,12 @@
+[package]
+name = "pong-server"
+version = "0.1.0"
+edition = "2021"
+
+# Binary for the server
+[[bin]]
+name = "server"
+path = "src/server.rs"
+
+[dependencies]
+# Pure std Rust only - no external dependencies!

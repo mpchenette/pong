@@ -1,0 +1,15 @@
+# Docker build artifacts
+target/
+Dockerfile.build
+.dockerignore
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+
+# Runtime logs
+*.log
