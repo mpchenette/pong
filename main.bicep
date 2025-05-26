@@ -20,19 +20,11 @@ resource app 'Microsoft.Web/sites@2023-01-01' = {
   location: location
   kind: 'app,linux,container'
   properties: {
-    // httpsOnly: false
     reserved: true
     serverFarmId: asp.id
     siteConfig: {
-      // acrUseManagedIdentityCreds: true
       alwaysOn: true
       linuxFxVersion: 'DOCKER|index.docker.io/mpchenette/duopong:latest'
-      // appSettings: [
-      //   {
-      //     name: 'DOCKER_REGISTRY_SERVER_URL'
-      //     value: 'https://index.docker.io'
-      //   }
-      // ]
     }
   }
 }
@@ -44,7 +36,5 @@ resource appSettings 'Microsoft.Web/sites/config@2023-01-01' = {
 
     DOCKER_REGISTRY_SERVER_URL: 'https://index.docker.io'
     WEBSITES_PORT: '8000'
-    // DOCKER_REGISTRY_SERVER_USERNAME: cr.listCredentials().username
-    // DOCKER_REGISTRY_SERVER_PASSWORD: cr.listCredentials().passwords[0].value
   }
 }
