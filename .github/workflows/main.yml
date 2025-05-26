@@ -42,5 +42,5 @@ jobs:
       - uses: docker/build-push-action@v5
         with:
           context: "{{defaultContext}}:server"
-          tags: mpchenette/rust-std-web-server:latest
+          tags: mpchenette/duopong:latest
           push: true
