@@ -67,7 +67,7 @@
     <canvas id="gameCanvas" width="400" height="400"></canvas>
 
     <button class="randomize-button" id="randomizeButton">
-        Randomize<br>Background
+        Randomize<br>Background<br><small>(for everyone)</small>
     </button>
 
     <script>
@@ -92,7 +92,16 @@
 
         // Add click event listener to randomize button
         randomizeButton.addEventListener('click', function() {
-            document.body.style.background = getRandomColor();
+            // Send HTTP request to server to randomize background for everyone
+            fetch('/randomize-background')
+                .then(response => {
+                    if (response.ok) {
+                        console.log('Background randomization requested');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error requesting background randomization:', error);
+                });
         });
 
         function connectWebSocket() {
@@ -110,6 +119,7 @@
                     gameState = JSON.parse(event.data);
                     draw();
                     updateUI();
+                    updateBackground();
                 } catch (error) {
                     console.error('Error parsing game state:', error);
                 }
@@ -161,6 +171,13 @@
             
             navyGreySpan.textContent = gameState.navy_grey_count;
             navyBlueSpan.textContent = gameState.navy_blue_count;
+        }
+
+        function updateBackground() {
+            if (!gameState || !gameState.background_color) return;
+            
+            const [r, g, b] = gameState.background_color;
+            document.body.style.background = `rgb(${r}, ${g}, ${b})`;
         }
     </script>
 </body>

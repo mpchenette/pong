@@ -52,6 +52,7 @@ struct Game {
     blocks: Vec<Vec<Block>>,
     navy_grey_count: usize,
     navy_blue_count: usize,
+    background_color: (u8, u8, u8),
 }
 
 impl Game {
@@ -104,7 +105,26 @@ impl Game {
             blocks,
             navy_grey_count,
             navy_blue_count,
+            background_color: (34, 34, 34), // Default dark grey background
         }
+    }
+
+    fn randomize_background(&mut self) {
+        // Generate random RGB values
+        use std::collections::hash_map::DefaultHasher;
+        use std::hash::{Hash, Hasher};
+        use std::time::{SystemTime, UNIX_EPOCH};
+        
+        // Simple pseudo-random number generation using system time
+        let mut hasher = DefaultHasher::new();
+        SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos().hash(&mut hasher);
+        let seed = hasher.finish();
+        
+        let r = ((seed >> 32) % 256) as u8;
+        let g = ((seed >> 16) % 256) as u8; 
+        let b = (seed % 256) as u8;
+        
+        self.background_color = (r, g, b);
     }
 
     fn update(&mut self) {
@@ -286,15 +306,16 @@ impl Game {
         blocks_json.push(']');
 
         format!(
-            "{{\"balls\":{},\"blocks\":{},\"navy_grey_count\":{},\"navy_blue_count\":{}}}",
-            balls_json, blocks_json, self.navy_grey_count, self.navy_blue_count
+            "{{\"balls\":{},\"blocks\":{},\"navy_grey_count\":{},\"navy_blue_count\":{},\"background_color\":[{},{},{}]}}",
+            balls_json, blocks_json, self.navy_grey_count, self.navy_blue_count, 
+            self.background_color.0, self.background_color.1, self.background_color.2
         )
     }
 }
 
 // WebSocket implementation using only std library
 mod websocket {
-    use std::io::Write;
+    use std::io::{Write, Read};
     use std::net::TcpStream;
     
     pub fn generate_accept_key(key: &str) -> String {
@@ -443,6 +464,59 @@ mod websocket {
         stream.write_all(&frame)?;
         stream.flush()
     }
+    
+    pub fn read_frame(stream: &mut TcpStream) -> std::io::Result<Option<String>> {
+        let mut buffer = [0u8; 2];
+        if stream.read_exact(&mut buffer).is_err() {
+            return Ok(None);
+        }
+        
+        let opcode = buffer[0] & 0x0F;
+        let masked = (buffer[1] & 0x80) != 0;
+        let mut payload_len = (buffer[1] & 0x7F) as usize;
+        
+        // Handle extended payload length
+        if payload_len == 126 {
+            let mut len_bytes = [0u8; 2];
+            stream.read_exact(&mut len_bytes)?;
+            payload_len = u16::from_be_bytes(len_bytes) as usize;
+        } else if payload_len == 127 {
+            let mut len_bytes = [0u8; 8];
+            stream.read_exact(&mut len_bytes)?;
+            payload_len = u64::from_be_bytes(len_bytes) as usize;
+        }
+        
+        // Read mask if present
+        let mask = if masked {
+            let mut mask_bytes = [0u8; 4];
+            stream.read_exact(&mut mask_bytes)?;
+            Some(mask_bytes)
+        } else {
+            None
+        };
+        
+        // Read payload
+        let mut payload = vec![0u8; payload_len];
+        stream.read_exact(&mut payload)?;
+        
+        // Unmask payload if needed
+        if let Some(mask) = mask {
+            for (i, byte) in payload.iter_mut().enumerate() {
+                *byte ^= mask[i % 4];
+            }
+        }
+        
+        // Handle different frame types
+        match opcode {
+            0x1 => { // Text frame
+                Ok(Some(String::from_utf8_lossy(&payload).to_string()))
+            },
+            0x8 => { // Close frame
+                Ok(None)
+            },
+            _ => Ok(Some(String::new())) // Ignore other frame types
+        }
+    }
 }
 
 fn main() {
@@ -500,9 +574,10 @@ fn main() {
         let stream = stream.unwrap();
         let clients_clone = Arc::clone(&clients);
         let client_counter_clone = Arc::clone(&client_counter);
+        let game_clone = Arc::clone(&game);
 
         thread::spawn(move || {
-            handle_websocket_connection(stream, clients_clone, client_counter_clone);
+            handle_websocket_connection(stream, clients_clone, client_counter_clone, game_clone);
         });
     }
 }
@@ -510,7 +585,8 @@ fn main() {
 fn handle_websocket_connection(
     mut stream: TcpStream, 
     clients: Arc<Mutex<HashMap<usize, TcpStream>>>,
-    client_counter: Arc<Mutex<usize>>
+    client_counter: Arc<Mutex<usize>>,
+    game: Arc<Mutex<Game>>
 ) {
     let mut buffer = [0; 4096];
     let bytes_read = match stream.read(&mut buffer) {
@@ -584,6 +660,13 @@ fn handle_websocket_connection(
         // The game loop will handle ongoing communication
         // Keep the connection handler minimal
         thread::sleep(Duration::from_millis(100)); // Brief delay then exit handler
+        
+    } else if request.contains("GET /randomize-background") {
+        // Handle background randomization request
+        println!("Background randomization requested via HTTP");
+        game.lock().unwrap().randomize_background();
+        let response = "HTTP/1.1 200 OK\r\n\r\nBackground randomized";
+        let _ = stream.write_all(response.as_bytes());
         
     } else if request.contains("GET /") && (request.contains("GET / ") || request.contains("GET /?")) {
         // Serve HTML page for regular HTTP requests
@@ -774,6 +857,7 @@ mod tests {
         assert!(json.contains("\"blocks\":"));
         assert!(json.contains("\"navy_grey_count\":"));
         assert!(json.contains("\"navy_blue_count\":"));
+        assert!(json.contains("\"background_color\":"));
 
         // Should contain initial counts
         assert!(json.contains("\"navy_grey_count\":50"));
