@@ -14,6 +14,7 @@
             display: flex;
             flex-direction: column;
             align-items: center;
+            position: relative;
         }
         canvas {
             background: black;
@@ -33,6 +34,28 @@
         .navy-blue-count {
             color: rgb(30, 50, 120);
         }
+        .randomize-button {
+            position: fixed;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: #4a5568;
+            color: white;
+            border: 2px solid #718096;
+            border-radius: 8px;
+            padding: 12px 16px;
+            font-family: monospace;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .randomize-button:hover {
+            background: #718096;
+            border-color: #a0aec0;
+        }
+        .randomize-button:active {
+            transform: translateY(-50%) scale(0.95);
+        }
     </style>
 </head>
 <body>
@@ -43,16 +66,34 @@
     
     <canvas id="gameCanvas" width="400" height="400"></canvas>
 
+    <button class="randomize-button" id="randomizeButton">
+        Randomize<br>Background
+    </button>
+
     <script>
         // WebSocket client for Block Breaker simulation
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         const navyGreySpan = document.getElementById('navyGreyCount');
         const navyBlueSpan = document.getElementById('navyBlueCount');
+        const randomizeButton = document.getElementById('randomizeButton');
 
         // WebSocket connection to Rust server
         let gameState = null;
         let socket = null;
+
+        // Function to generate random color
+        function getRandomColor() {
+            const r = Math.floor(Math.random() * 256);
+            const g = Math.floor(Math.random() * 256);
+            const b = Math.floor(Math.random() * 256);
+            return `rgb(${r}, ${g}, ${b})`;
+        }
+
+        // Add click event listener to randomize button
+        randomizeButton.addEventListener('click', function() {
+            document.body.style.background = getRandomColor();
+        });
 
         function connectWebSocket() {
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
