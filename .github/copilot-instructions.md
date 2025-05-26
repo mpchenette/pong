@@ -14,3 +14,9 @@ The goal is to have a server-side simulation of the following:
 
 
 I want this to be a simulation that anyone around the world can "tune into" by going to my website. Everyone who goes to my website can watch the exact same simulation in real time.
+
+### Rules for agent mode
+- Never run `pkill`
+- Never run `kill` or `lsof ... | xargs kill ...`
+- If you need to stop a process, use `Ctrl+C` in the terminal.
+- Never run `rm -rf` or `rm -rf /` or any variation of `rm -rf`
