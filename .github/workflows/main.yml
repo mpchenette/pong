@@ -29,6 +29,8 @@ jobs:
           operation: create
           name: deployment-name-duopong
           scope: resourceGroup
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           resource-group-name: duopong
           template-file: main.bicep
 
