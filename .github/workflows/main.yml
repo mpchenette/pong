@@ -28,6 +28,7 @@ jobs:
           type: deployment
           operation: create
           name: deployment-name-duopong
+          location: eastus
           scope: resourceGroup
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
