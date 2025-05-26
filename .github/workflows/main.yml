@@ -28,7 +28,7 @@ jobs:
           type: deployment
           operation: create
           name: deployment-name-duopong
-          scope: resourcegroup
+          scope: resourceGroup
           resource-group-name: duopong
           template-file: main.bicep
 
