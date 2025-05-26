@@ -26,7 +26,7 @@ resource app 'Microsoft.Web/sites@2023-01-01' = {
     siteConfig: {
       // acrUseManagedIdentityCreds: true
       alwaysOn: true
-      linuxFxVersion: 'DOCKER|index.docker.io/mpchenette/rust-std-web-server:latest'
+      linuxFxVersion: 'DOCKER|index.docker.io/mpchenette/duopong:latest'
       // appSettings: [
       //   {
       //     name: 'DOCKER_REGISTRY_SERVER_URL'
