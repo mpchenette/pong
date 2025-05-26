@@ -2,6 +2,25 @@
 
 A server-side block breaker simulation written entirely in Rust using only the standard library.
 
+## Project Structure
+
+```
+src/
+├── lib.rs              # Library root
+├── main.rs             # Server binary entry point
+├── game/               # Game logic modules
+│   ├── mod.rs          # Game module exports
+│   ├── types.rs        # Game data structures and constants
+│   ├── state.rs        # Game state management
+│   └── physics.rs      # Ball physics and collision detection
+└── server/             # Network server modules
+    ├── mod.rs          # Server module exports
+    ├── http.rs         # HTTP request handling
+    └── websocket.rs    # WebSocket protocol implementation
+static/
+└── index.html          # Frontend web page
+```
+
 ## Overview
 
 This project implements a unique twist on the classic block breaker game featuring:

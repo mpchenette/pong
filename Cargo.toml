@@ -1,12 +1,12 @@
 [package]
-name = "pong-server"
+name = "block-breaker"
 version = "0.1.0"
 edition = "2021"
 
 # Binary for the server
 [[bin]]
 name = "server"
-path = "src/server.rs"
+path = "src/main.rs"
 
 [dependencies]
 # Pure std Rust only - no external dependencies!
