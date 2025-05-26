@@ -11,3 +11,6 @@ The goal is to have a server-side simulation of the following:
 - The ball that starts on the right should only be able to hit the navy grey blocks and not the navy blue blocks.
 - When either ball hits a block, that block should be converted to the other color.
 - There should be a running tally of the number of blocks of each color. It should only display the numbers.
+
+
+I want this to be a simulation that anyone around the world can "tune into" by going to my website. Everyone who goes to my website can watch the exact same simulation in real time.
