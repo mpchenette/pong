@@ -25,6 +25,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: azure/bicep-deploy@v2
         with:
+          type: deployment
           scope: resourcegroup
           resource-group-name: duopong
           template-file: main.bicep
