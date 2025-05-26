@@ -28,11 +28,10 @@ jobs:
           type: deployment
           operation: create
           name: deployment-name-duopong
-          location: eastus
           scope: resourceGroup
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          resource-group-name: duopong
+          resource-group-name: duopong-westus
           template-file: main.bicep
 
       - uses: docker/setup-buildx-action@v3
