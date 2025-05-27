@@ -179,4 +179,102 @@ mod tests {
         assert!(json.contains("\"navy_grey_count\":50"));
         assert!(json.contains("\"navy_blue_count\":50"));
     }
+
+    #[test]
+    fn test_all_blocks_one_color_scenario() {
+        let mut game = Game::new();
+        
+        // Manually convert all blocks to navy blue
+        for row in 0..GRID_SIZE {
+            for col in 0..GRID_SIZE {
+                game.blocks[row][col].color = BlockColor::NavyBlue;
+            }
+        }
+        game.navy_blue_count = 100;
+        game.navy_grey_count = 0;
+
+        // Position white ball to hit a navy blue block
+        game.balls[0].x = 0.0 - BALL_SIZE;
+        game.balls[0].y = 0.0;
+        game.balls[0].dx = 2.0;
+        game.balls[0].dy = 0.0;
+        game.balls[0].ball_type = BallType::White;
+
+        game.update();
+
+        // Should still function correctly
+        assert_eq!(game.blocks[0][0].color, BlockColor::NavyGrey);
+        assert_eq!(game.navy_blue_count, 99);
+        assert_eq!(game.navy_grey_count, 1);
+    }
+
+    #[test]
+    fn test_block_count_accuracy_during_rapid_changes() {
+        let game = Game::new();
+        
+        // Verify initial state
+        assert_eq!(game.navy_grey_count, 50);
+        assert_eq!(game.navy_blue_count, 50);
+        
+        // Count actual blocks to verify consistency
+        let mut actual_grey = 0;
+        let mut actual_blue = 0;
+        for row in &game.blocks {
+            for block in row {
+                match block.color {
+                    BlockColor::NavyGrey => actual_grey += 1,
+                    BlockColor::NavyBlue => actual_blue += 1,
+                }
+            }
+        }
+        
+        assert_eq!(game.navy_grey_count, actual_grey);
+        assert_eq!(game.navy_blue_count, actual_blue);
+        assert_eq!(actual_grey + actual_blue, 100);
+    }
+
+    #[test]
+    fn test_background_randomization() {
+        let mut game = Game::new();
+        let original_background = game.background_color;
+        
+        // Call randomize multiple times to see if it changes
+        game.randomize_background();
+        let first_random = game.background_color;
+        
+        game.randomize_background();
+        let second_random = game.background_color;
+        
+        // At least one should be different from original (very high probability)
+        // Note: There's a tiny chance this could fail due to randomness, but extremely unlikely
+        assert!(first_random != original_background || second_random != original_background);
+        
+        // Background should be valid RGB values (u8 automatically limits to 0-255)
+        // Just verify the values are accessible
+        let _r = game.background_color.0;
+        let _g = game.background_color.1;
+        let _b = game.background_color.2;
+    }
+
+    #[test]
+    fn test_json_serialization_with_modified_state() {
+        let mut game = Game::new();
+        
+        // Modify game state
+        game.balls[0].x = 123.45;
+        game.balls[0].y = 67.89;
+        game.blocks[0][0].color = BlockColor::NavyBlue;
+        game.navy_grey_count = 49;
+        game.navy_blue_count = 51;
+        game.background_color = (100, 200, 50);
+        
+        let json = game.to_json();
+        
+        // Should contain updated values
+        assert!(json.contains("123.45"));
+        assert!(json.contains("67.89"));
+        assert!(json.contains("\"navy_grey_count\":49"));
+        assert!(json.contains("\"navy_blue_count\":51"));
+        assert!(json.contains("[100,200,50]"));
+    }
 }

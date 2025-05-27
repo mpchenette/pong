@@ -109,7 +109,166 @@ pub fn handle_websocket_connection(
     } else {
         // 404 for other requests
         println!("404 for request: {}", request.lines().next().unwrap_or(""));
-        let response = "HTTP/1.1 404 Not Found\r\n\r\n404 Not Found";
+        let response = "HTTP/1.1 404 Not Found\r\n\r\nNot Found";
         let _ = stream.write_all(response.as_bytes());
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::{Arc, Mutex};
+    use std::collections::HashMap;
+
+    #[test]
+    fn test_websocket_request_parsing() {
+        let request = "GET / HTTP/1.1\r\n\
+                      Host: localhost:8000\r\n\
+                      Upgrade: websocket\r\n\
+                      Connection: Upgrade\r\n\
+                      Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n\
+                      Sec-WebSocket-Version: 13\r\n\r\n";
+
+        // Test that we can identify WebSocket requests
+        assert!(request.contains("Upgrade: websocket"));
+        
+        // Test key extraction
+        let key = request
+            .lines()
+            .find(|line| line.starts_with("Sec-WebSocket-Key:"))
+            .and_then(|line| line.split(':').nth(1))
+            .map(|key| key.trim())
+            .unwrap_or("");
+        
+        assert_eq!(key, "dGhlIHNhbXBsZSBub25jZQ==");
+    }
+
+    #[test]
+    fn test_http_get_request_parsing() {
+        let request = "GET / HTTP/1.1\r\n\
+                      Host: localhost:8000\r\n\
+                      User-Agent: Mozilla/5.0\r\n\r\n";
+
+        assert!(request.contains("GET /"));
+        assert!(!request.contains("Upgrade: websocket"));
+    }
+
+    #[test]
+    fn test_randomize_background_request_parsing() {
+        let request = "GET /randomize-background HTTP/1.1\r\n\
+                      Host: localhost:8000\r\n\r\n";
+
+        assert!(request.contains("GET /randomize-background"));
+    }
+
+    #[test]
+    fn test_websocket_accept_key_generation() {
+        // This tests the WebSocket handshake key generation
+        let test_key = "dGhlIHNhbXBsZSBub25jZQ==";
+        let accept_key = websocket::generate_accept_key(test_key);
+        
+        // Should produce the expected result from RFC 6455
+        assert_eq!(accept_key, "s3pPLMBiTxaQ9kYGzzhZRbK+xOo=");
+    }
+
+    #[test]
+    fn test_websocket_handshake_response_format() {
+        let accept_key = "s3pPLMBiTxaQ9kYGzzhZRbK+xOo=";
+        let response = format!(
+            "HTTP/1.1 101 Switching Protocols\r\n\
+             Upgrade: websocket\r\n\
+             Connection: Upgrade\r\n\
+             Sec-WebSocket-Accept: {}\r\n\r\n",
+            accept_key
+        );
+
+        assert!(response.contains("101 Switching Protocols"));
+        assert!(response.contains("Upgrade: websocket"));
+        assert!(response.contains("Connection: Upgrade"));
+        assert!(response.contains(&format!("Sec-WebSocket-Accept: {}", accept_key)));
+    }
+
+    #[test]
+    fn test_client_counter_increment() {
+        let client_counter = Arc::new(Mutex::new(0usize));
+        
+        // Simulate adding clients
+        let id1 = {
+            let mut counter = client_counter.lock().unwrap();
+            *counter += 1;
+            *counter
+        };
+        
+        let id2 = {
+            let mut counter = client_counter.lock().unwrap();
+            *counter += 1;
+            *counter
+        };
+        
+        assert_eq!(id1, 1);
+        assert_eq!(id2, 2);
+        assert_eq!(*client_counter.lock().unwrap(), 2);
+    }
+
+    #[test]
+    fn test_clients_hashmap_operations() {
+        let clients: Arc<Mutex<HashMap<usize, String>>> = Arc::new(Mutex::new(HashMap::new()));
+        
+        // Simulate adding clients (using String instead of TcpStream for testing)
+        {
+            let mut clients_guard = clients.lock().unwrap();
+            clients_guard.insert(1, "client1".to_string());
+            clients_guard.insert(2, "client2".to_string());
+        }
+        
+        // Test client removal
+        {
+            let mut clients_guard = clients.lock().unwrap();
+            let removed = clients_guard.remove(&1);
+            assert_eq!(removed, Some("client1".to_string()));
+            assert_eq!(clients_guard.len(), 1);
+        }
+        
+        // Verify remaining client
+        {
+            let clients_guard = clients.lock().unwrap();
+            assert!(clients_guard.contains_key(&2));
+            assert!(!clients_guard.contains_key(&1));
+        }
+    }
+
+    #[test]
+    fn test_malformed_http_request_handling() {
+        // Test key extraction with malformed headers
+        let malformed_request = "GET / HTTP/1.1\r\n\
+                               MalformedHeader\r\n\
+                               Sec-WebSocket-Key:\r\n\r\n";
+        
+        let key = malformed_request
+            .lines()
+            .find(|line| line.starts_with("Sec-WebSocket-Key:"))
+            .and_then(|line| line.split(':').nth(1))
+            .map(|key| key.trim())
+            .unwrap_or("");
+        
+        assert_eq!(key, ""); // Should handle empty key gracefully
+        
+        // Test missing WebSocket key
+        let no_key_request = "GET / HTTP/1.1\r\n\
+                             Upgrade: websocket\r\n\
+                             Connection: Upgrade\r\n\r\n";
+        
+        let key = no_key_request
+            .lines()
+            .find(|line| line.starts_with("Sec-WebSocket-Key:"))
+            .and_then(|line| line.split(':').nth(1))
+            .map(|key| key.trim())
+            .unwrap_or("");
+        
+        assert_eq!(key, ""); // Should use empty string as fallback
+        
+        // Test request with no headers
+        let no_headers = "GET / HTTP/1.1\r\n\r\n";
+        assert!(!no_headers.contains("Upgrade: websocket"));
     }
 }

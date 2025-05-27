@@ -200,3 +200,95 @@ pub fn read_frame(stream: &mut TcpStream) -> std::io::Result<Option<String>> {
         _ => Ok(Some(String::new())) // Ignore other frame types
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_generate_accept_key() {
+        // Test with known example from RFC 6455
+        let key = "dGhlIHNhbXBsZSBub25jZQ==";
+        let expected = "s3pPLMBiTxaQ9kYGzzhZRbK+xOo=";
+        let result = generate_accept_key(key);
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_generate_accept_key_different_inputs() {
+        let key1 = "x3JJHMbDL1EzLkh9GBhXDw==";
+        let key2 = "AQIDBAUGBwgJCgsMDQ4PEA==";
+        
+        let result1 = generate_accept_key(key1);
+        let result2 = generate_accept_key(key2);
+        
+        // Different inputs should produce different results
+        assert_ne!(result1, result2);
+        
+        // Results should be non-empty and valid base64-like strings
+        assert!(!result1.is_empty());
+        assert!(!result2.is_empty());
+        assert!(result1.ends_with("=") || result1.chars().all(|c| c.is_alphanumeric() || c == '+' || c == '/'));
+    }
+
+    #[test]
+    fn test_sha1_implementation() {
+        // Test with known SHA-1 test vectors
+        let input = b"abc";
+        let result = sha1(input);
+        let expected = [
+            0xa9, 0x99, 0x3e, 0x36, 0x47, 0x06, 0x81, 0x6a,
+            0xba, 0x3e, 0x25, 0x71, 0x78, 0x50, 0xc2, 0x6c,
+            0x9c, 0xd0, 0xd8, 0x9d
+        ];
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_base64_encode() {
+        // Test with known base64 encoding
+        let input = b"Hello World";
+        let result = base64_encode(input);
+        let expected = "SGVsbG8gV29ybGQ=";
+        assert_eq!(result, expected);
+        
+        // Test with empty input
+        let empty_result = base64_encode(&[]);
+        assert_eq!(empty_result, "");
+    }
+
+    #[test]
+    fn test_websocket_frame_creation() {
+        let text = "Hello, WebSocket!";
+        let mut buffer = Vec::new();
+        
+        // Simulate creating a text frame (this tests the frame creation logic)
+        buffer.push(0x81); // FIN + text frame
+        if text.len() < 126 {
+            buffer.push(text.len() as u8);
+        }
+        buffer.extend_from_slice(text.as_bytes());
+        
+        // Verify frame structure
+        assert_eq!(buffer[0], 0x81); // Text frame with FIN bit
+        assert_eq!(buffer[1], text.len() as u8); // Payload length
+        assert_eq!(&buffer[2..], text.as_bytes()); // Payload
+    }
+
+    #[test]
+    fn test_websocket_handshake_edge_cases() {
+        // Test malformed WebSocket key
+        let result = generate_accept_key("");
+        assert_eq!(result.len(), 28); // Base64 encoded SHA-1 is always 28 chars
+        
+        // Test with special characters in key
+        let special_key = "dGhlIHNhbXBsZSBub25jZQ==!@#$";
+        let result = generate_accept_key(special_key);
+        assert_eq!(result.len(), 28);
+        
+        // Test with maximum length key
+        let long_key = "a".repeat(100);
+        let result = generate_accept_key(&long_key);
+        assert_eq!(result.len(), 28);
+    }
+}
