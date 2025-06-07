@@ -55,7 +55,7 @@ fn main() {
 
     // Start WebSocket server
     let listener = TcpListener::bind("0.0.0.0:8000").unwrap();
-    println!("WebSocket server running on ws://0.0.0.0:8000");
+    println!("WebSocket server running on https://0.0.0.0:8000");
 
     for stream in listener.incoming() {
         let stream = stream.unwrap();
