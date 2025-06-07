@@ -56,9 +56,89 @@
         .randomize-button:active {
             transform: translateY(-50%) scale(0.95);
         }
+        .metrics-panel {
+            position: fixed;
+            left: 20px;
+            top: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid #444;
+            border-radius: 8px;
+            padding: 15px;
+            font-family: monospace;
+            font-size: 12px;
+            color: #ccc;
+            max-width: 300px;
+            z-index: 100;
+        }
+        .metrics-title {
+            color: #fff;
+            font-weight: bold;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #444;
+            padding-bottom: 5px;
+        }
+        .metrics-section {
+            margin-bottom: 10px;
+        }
+        .metrics-section-title {
+            color: #9ca3af;
+            font-weight: bold;
+            margin-bottom: 3px;
+        }
+        .metric-item {
+            margin-left: 10px;
+            margin-bottom: 2px;
+        }
+        .metric-value {
+            color: #60a5fa;
+        }
+        .error-value {
+            color: #f87171;
+        }
+        .success-value {
+            color: #34d399;
+        }
     </style>
 </head>
 <body>
+    <div class="metrics-panel" id="metricsPanel">
+        <div class="metrics-title">Server Performance Metrics</div>
+        
+        <div class="metrics-section">
+            <div class="metrics-section-title">Frame Performance</div>
+            <div class="metric-item">FPS: <span class="metric-value" id="fps">0</span></div>
+            <div class="metric-item">Frame Time: <span class="metric-value" id="frameTime">0</span>ms</div>
+            <div class="metric-item">Total Frames: <span class="metric-value" id="totalFrames">0</span></div>
+        </div>
+        
+        <div class="metrics-section">
+            <div class="metrics-section-title">Network Performance</div>
+            <div class="metric-item">Bandwidth/Client: <span class="metric-value" id="bandwidth">0</span> KB/s</div>
+            <div class="metric-item">State Size: <span class="metric-value" id="stateSize">0</span> bytes</div>
+            <div class="metric-item">Updates Sent: <span class="metric-value" id="updatesSent">0</span></div>
+        </div>
+        
+        <div class="metrics-section">
+            <div class="metrics-section-title">Client Connections</div>
+            <div class="metric-item">Connected: <span class="success-value" id="connectedClients">0</span></div>
+            <div class="metric-item">Total: <span class="metric-value" id="totalConnections">0</span></div>
+            <div class="metric-item">Disconnected: <span class="metric-value" id="disconnectedClients">0</span></div>
+        </div>
+        
+        <div class="metrics-section">
+            <div class="metrics-section-title">Performance</div>
+            <div class="metric-item">Collision Checks: <span class="metric-value" id="collisionChecks">0</span>/frame</div>
+            <div class="metric-item">JSON Time: <span class="metric-value" id="jsonTime">0</span>ms</div>
+            <div class="metric-item">Network Latency: <span class="metric-value" id="networkLatency">0</span>ms</div>
+        </div>
+        
+        <div class="metrics-section">
+            <div class="metrics-section-title">Errors</div>
+            <div class="metric-item">Send Failures: <span class="error-value" id="sendFailures">0</span></div>
+            <div class="metric-item">Timeouts: <span class="error-value" id="timeoutErrors">0</span></div>
+        </div>
+    </div>
+
     <div class="count-info">
         <div class="count-item navy-grey-count"><span id="navyGreyCount">50</span></div>
         <div class="count-item navy-blue-count"><span id="navyBlueCount">50</span></div>
@@ -137,6 +217,45 @@
 
         // Start WebSocket connection
         connectWebSocket();
+
+        // Fetch and update metrics periodically
+        function updateMetrics() {
+            fetch('/metrics')
+                .then(response => response.json())
+                .then(metrics => {
+                    // Frame metrics
+                    document.getElementById('fps').textContent = metrics.frame_metrics.current_fps.toFixed(1);
+                    document.getElementById('frameTime').textContent = metrics.frame_metrics.avg_frame_time_ms.toFixed(2);
+                    document.getElementById('totalFrames').textContent = metrics.frame_metrics.total_frames;
+                    
+                    // Network metrics
+                    document.getElementById('bandwidth').textContent = metrics.network_metrics.bandwidth_per_client_kbps.toFixed(2);
+                    document.getElementById('stateSize').textContent = metrics.network_metrics.game_state_size_bytes;
+                    document.getElementById('updatesSent').textContent = metrics.network_metrics.updates_sent_total;
+                    
+                    // Client metrics
+                    document.getElementById('connectedClients').textContent = metrics.client_metrics.connected_clients;
+                    document.getElementById('totalConnections').textContent = metrics.client_metrics.total_connections;
+                    document.getElementById('disconnectedClients').textContent = metrics.client_metrics.disconnected_clients;
+                    
+                    // Performance metrics
+                    document.getElementById('collisionChecks').textContent = metrics.performance_metrics.collision_checks_per_frame;
+                    document.getElementById('jsonTime').textContent = metrics.performance_metrics.avg_json_serialization_ms.toFixed(2);
+                    document.getElementById('networkLatency').textContent = metrics.performance_metrics.avg_network_latency_ms.toFixed(2);
+                    
+                    // Error metrics
+                    document.getElementById('sendFailures').textContent = metrics.error_metrics.send_failures;
+                    document.getElementById('timeoutErrors').textContent = metrics.error_metrics.timeout_errors;
+                })
+                .catch(error => {
+                    console.error('Error fetching metrics:', error);
+                });
+        }
+
+        // Update metrics every 0.5 seconds for real-time display
+        setInterval(updateMetrics, 500);
+        // Initial update
+        updateMetrics();
 
         function draw() {
             if (!gameState) return;

@@ -6,13 +6,14 @@ use std::time::Duration;
 use std::thread;
 
 use crate::game::Game;
-use crate::server::websocket;
+use crate::server::{websocket, ServerMetrics};
 
 pub fn handle_websocket_connection(
     mut stream: TcpStream, 
     clients: Arc<Mutex<HashMap<usize, TcpStream>>>,
     client_counter: Arc<Mutex<usize>>,
-    game: Arc<Mutex<Game>>
+    game: Arc<Mutex<Game>>,
+    metrics: Arc<ServerMetrics>
 ) {
     let mut buffer = [0; 4096];
     let bytes_read = match stream.read(&mut buffer) {
@@ -66,6 +67,9 @@ pub fn handle_websocket_connection(
         
         println!("Client {} connected via WebSocket", client_id);
         
+        // Record the new client connection
+        metrics.record_client_connected();
+        
         // Clone the stream for the clients map
         let stream_clone = match stream.try_clone() {
             Ok(s) => s,
@@ -92,6 +96,20 @@ pub fn handle_websocket_connection(
         println!("Background randomization requested via HTTP");
         game.lock().unwrap().randomize_background();
         let response = "HTTP/1.1 200 OK\r\n\r\nBackground randomized";
+        let _ = stream.write_all(response.as_bytes());
+        
+    } else if request.contains("GET /metrics") {
+        // Handle metrics request - serve JSON metrics data
+        println!("Metrics requested via HTTP");
+        let metrics_json = metrics.to_json();
+        let response = format!(
+            "HTTP/1.1 200 OK\r\n\
+             Content-Type: application/json\r\n\
+             Content-Length: {}\r\n\
+             Access-Control-Allow-Origin: *\r\n\r\n{}",
+            metrics_json.len(),
+            metrics_json
+        );
         let _ = stream.write_all(response.as_bytes());
         
     } else if request.contains("GET /") && (request.contains("GET / ") || request.contains("GET /?")) {
