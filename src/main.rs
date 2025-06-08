@@ -22,10 +22,12 @@ fn main() {
     thread::spawn(move || {
         let mut last_update = Instant::now();
         loop {
-            let frame_start = Instant::now();
             let now = Instant::now();
             if now.duration_since(last_update) >= Duration::from_millis(16) {
                 // ~60 FPS
+                
+                // Calculate actual frame interval (time since last frame)
+                let frame_interval = now.duration_since(last_update);
                 
                 // Time the game update
                 let mutex_start = Instant::now();
@@ -70,14 +72,13 @@ fn main() {
                 // Record collision checks (currently 2 balls * 100 blocks = 200 max)
                 metrics_clone.record_collision_checks(2 * 100);
                 
-                last_update = now;
-                
-                // Record frame timing
-                let frame_duration = frame_start.elapsed();
-                metrics_clone.record_frame(frame_duration);
+                // Record frame timing - use actual frame interval, not execution time
+                metrics_clone.record_frame(frame_interval);
                 
                 // Update per-second metrics periodically
                 metrics_clone.update_per_second_metrics();
+                
+                last_update = now;
             }
             thread::sleep(Duration::from_millis(1));
         }
