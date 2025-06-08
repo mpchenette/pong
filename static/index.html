@@ -98,6 +98,44 @@
         .success-value {
             color: #34d399;
         }
+        /* Tooltip styles */
+        .metric-item {
+            margin-left: 10px;
+            margin-bottom: 2px;
+            position: relative;
+            cursor: help;
+        }
+        .metric-item[data-tooltip]:hover::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            left: 100%;
+            top: 50%;
+            transform: translateY(-50%);
+            margin-left: 10px;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 11px;
+            white-space: nowrap;
+            z-index: 1000;
+            border: 1px solid #555;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+        .metric-item[data-tooltip]:hover::before {
+            content: '';
+            position: absolute;
+            left: 100%;
+            top: 50%;
+            transform: translateY(-50%);
+            margin-left: 5px;
+            width: 0;
+            height: 0;
+            border-top: 5px solid transparent;
+            border-bottom: 5px solid transparent;
+            border-right: 5px solid rgba(0, 0, 0, 0.9);
+            z-index: 1001;
+        }
     </style>
 </head>
 <body>
@@ -106,36 +144,36 @@
         
         <div class="metrics-section">
             <div class="metrics-section-title">Frame Performance</div>
-            <div class="metric-item">FPS: <span class="metric-value" id="fps">0</span></div>
-            <div class="metric-item">Frame Time: <span class="metric-value" id="frameTime">0</span>ms</div>
-            <div class="metric-item">Total Frames: <span class="metric-value" id="totalFrames">0</span></div>
+            <div class="metric-item" data-tooltip="Frames rendered per second - target is 60 FPS">FPS: <span class="metric-value" id="fps">0</span></div>
+            <div class="metric-item" data-tooltip="Average time to process each frame in milliseconds">Frame Time: <span class="metric-value" id="frameTime">0</span>ms</div>
+            <div class="metric-item" data-tooltip="Total number of frames processed since server start">Total Frames: <span class="metric-value" id="totalFrames">0</span></div>
         </div>
         
         <div class="metrics-section">
             <div class="metrics-section-title">Network Performance</div>
-            <div class="metric-item">Bandwidth/Client: <span class="metric-value" id="bandwidth">0</span> KB/s</div>
-            <div class="metric-item">State Size: <span class="metric-value" id="stateSize">0</span> bytes</div>
-            <div class="metric-item">Updates Sent: <span class="metric-value" id="updatesSent">0</span></div>
+            <div class="metric-item" data-tooltip="Data sent per client per second - baseline ~120 KB/s before optimization">Bandwidth/Client: <span class="metric-value" id="bandwidth">0</span> KB/s</div>
+            <div class="metric-item" data-tooltip="Size of game state JSON in bytes - baseline ~2KB before optimization">State Size: <span class="metric-value" id="stateSize">0</span> bytes</div>
+            <div class="metric-item" data-tooltip="Total number of game state updates sent to all clients">Updates Sent: <span class="metric-value" id="updatesSent">0</span></div>
         </div>
         
         <div class="metrics-section">
             <div class="metrics-section-title">Client Connections</div>
-            <div class="metric-item">Connected: <span class="success-value" id="connectedClients">0</span></div>
-            <div class="metric-item">Total: <span class="metric-value" id="totalConnections">0</span></div>
-            <div class="metric-item">Disconnected: <span class="metric-value" id="disconnectedClients">0</span></div>
+            <div class="metric-item" data-tooltip="Number of clients currently connected via WebSocket">Connected: <span class="success-value" id="connectedClients">0</span></div>
+            <div class="metric-item" data-tooltip="Total number of clients that have connected since server start">Total: <span class="metric-value" id="totalConnections">0</span></div>
+            <div class="metric-item" data-tooltip="Number of clients that have disconnected since server start">Disconnected: <span class="metric-value" id="disconnectedClients">0</span></div>
         </div>
         
         <div class="metrics-section">
             <div class="metrics-section-title">Performance</div>
-            <div class="metric-item">Collision Checks: <span class="metric-value" id="collisionChecks">0</span>/frame</div>
-            <div class="metric-item">JSON Time: <span class="metric-value" id="jsonTime">0</span>ms</div>
-            <div class="metric-item">Network Latency: <span class="metric-value" id="networkLatency">0</span>ms</div>
+            <div class="metric-item" data-tooltip="Collision detection operations per frame - baseline 200 (2 balls × 100 blocks)">Collision Checks: <span class="metric-value" id="collisionChecks">0</span>/frame</div>
+            <div class="metric-item" data-tooltip="Time to serialize game state to JSON - optimization target <1ms">JSON Time: <span class="metric-value" id="jsonTime">0</span>ms</div>
+            <div class="metric-item" data-tooltip="Average network round-trip time for data transmission">Network Latency: <span class="metric-value" id="networkLatency">0</span>ms</div>
         </div>
         
         <div class="metrics-section">
             <div class="metrics-section-title">Errors</div>
-            <div class="metric-item">Send Failures: <span class="error-value" id="sendFailures">0</span></div>
-            <div class="metric-item">Timeouts: <span class="error-value" id="timeoutErrors">0</span></div>
+            <div class="metric-item" data-tooltip="Number of failed attempts to send data to clients">Send Failures: <span class="error-value" id="sendFailures">0</span></div>
+            <div class="metric-item" data-tooltip="Number of network timeout errors when communicating with clients">Timeouts: <span class="error-value" id="timeoutErrors">0</span></div>
         </div>
     </div>
 
