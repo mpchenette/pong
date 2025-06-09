@@ -14,17 +14,22 @@ fn main() {
     let client_counter = Arc::new(Mutex::new(0usize));
     let metrics = Arc::new(ServerMetrics::new());
     
+    // Global speed control - default 60 FPS, with reasonable limits
+    let global_frame_duration = Arc::new(Mutex::new(Duration::from_millis(16))); // Default 60 FPS
+    
     let game_clone = Arc::clone(&game);
     let clients_clone = Arc::clone(&clients);
     let metrics_clone = Arc::clone(&metrics);
+    let frame_duration_clone = Arc::clone(&global_frame_duration);
 
     // Start game loop in separate thread
     thread::spawn(move || {
         let mut last_update = Instant::now();
         loop {
             let now = Instant::now();
-            if now.duration_since(last_update) >= Duration::from_millis(16) {
-                // ~60 FPS
+            let current_frame_duration = *frame_duration_clone.lock().unwrap();
+            if now.duration_since(last_update) >= current_frame_duration {
+                // Variable FPS based on global setting
                 
                 // Calculate actual frame interval (time since last frame)
                 let frame_interval = now.duration_since(last_update);
@@ -94,9 +99,10 @@ fn main() {
         let client_counter_clone = Arc::clone(&client_counter);
         let game_clone = Arc::clone(&game);
         let metrics_clone = Arc::clone(&metrics);
+        let frame_duration_clone = Arc::clone(&global_frame_duration);
 
         thread::spawn(move || {
-            handle_websocket_connection(stream, clients_clone, client_counter_clone, game_clone, metrics_clone);
+            handle_websocket_connection(stream, clients_clone, client_counter_clone, game_clone, metrics_clone, frame_duration_clone);
         });
     }
 }

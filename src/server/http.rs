@@ -13,7 +13,8 @@ pub fn handle_websocket_connection(
     clients: Arc<Mutex<HashMap<usize, TcpStream>>>,
     client_counter: Arc<Mutex<usize>>,
     game: Arc<Mutex<Game>>,
-    metrics: Arc<ServerMetrics>
+    metrics: Arc<ServerMetrics>,
+    global_frame_duration: Arc<Mutex<Duration>>
 ) {
     let mut buffer = [0; 4096];
     let bytes_read = match stream.read(&mut buffer) {
@@ -99,16 +100,30 @@ pub fn handle_websocket_connection(
         let _ = stream.write_all(response.as_bytes());
         
     } else if request.contains("GET /increase-speed") {
-        // Handle speed increase request
+        // Handle speed increase request - decrease frame duration for faster updates
         println!("Speed increase requested via HTTP");
-        game.lock().unwrap().increase_speed(1.1); // 10% faster
+        {
+            let mut duration = global_frame_duration.lock().unwrap();
+            let current_millis = duration.as_millis() as u64;
+            // Minimum 4ms (250 FPS) to protect bandwidth
+            let new_millis = std::cmp::max(4, current_millis.saturating_sub(2));
+            *duration = Duration::from_millis(new_millis);
+            println!("Frame duration decreased to {}ms (~{} FPS)", new_millis, 1000 / new_millis);
+        }
         let response = "HTTP/1.1 200 OK\r\n\r\nSpeed increased";
         let _ = stream.write_all(response.as_bytes());
         
     } else if request.contains("GET /decrease-speed") {
-        // Handle speed decrease request
+        // Handle speed decrease request - increase frame duration for slower updates
         println!("Speed decrease requested via HTTP");
-        game.lock().unwrap().decrease_speed(1.1); // 10% slower
+        {
+            let mut duration = global_frame_duration.lock().unwrap();
+            let current_millis = duration.as_millis() as u64;
+            // Maximum 100ms (10 FPS) to keep it watchable
+            let new_millis = std::cmp::min(100, current_millis.saturating_add(2));
+            *duration = Duration::from_millis(new_millis);
+            println!("Frame duration increased to {}ms (~{} FPS)", new_millis, 1000 / new_millis);
+        }
         let response = "HTTP/1.1 200 OK\r\n\r\nSpeed decreased";
         let _ = stream.write_all(response.as_bytes());
         

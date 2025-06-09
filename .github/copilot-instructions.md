@@ -1,3 +1,8 @@
+NEVER RUN `pkill`
+NEVER RUN `kill` or `lsof ... | xargs kill ...`
+If you need to stop a process, use `Ctrl+C` in the terminal.
+NEVER RUN `rm -rf` or `rm -rf /` or any variation of `rm -rf`
+
 This project is a "block breaker" type simulation written entirely in Rust.
 
 When suggesting code, you should only suggest use of Rust's `std` library. I do not want to use any external packages in my implementation.
