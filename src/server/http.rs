@@ -98,6 +98,20 @@ pub fn handle_websocket_connection(
         let response = "HTTP/1.1 200 OK\r\n\r\nBackground randomized";
         let _ = stream.write_all(response.as_bytes());
         
+    } else if request.contains("GET /increase-speed") {
+        // Handle speed increase request
+        println!("Speed increase requested via HTTP");
+        game.lock().unwrap().increase_speed(1.1); // 10% faster
+        let response = "HTTP/1.1 200 OK\r\n\r\nSpeed increased";
+        let _ = stream.write_all(response.as_bytes());
+        
+    } else if request.contains("GET /decrease-speed") {
+        // Handle speed decrease request
+        println!("Speed decrease requested via HTTP");
+        game.lock().unwrap().decrease_speed(1.1); // 10% slower
+        let response = "HTTP/1.1 200 OK\r\n\r\nSpeed decreased";
+        let _ = stream.write_all(response.as_bytes());
+        
     } else if request.contains("GET /metrics") {
         // Handle metrics request - serve JSON metrics data
         println!("Metrics requested via HTTP");

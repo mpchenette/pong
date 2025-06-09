@@ -112,10 +112,37 @@ impl Game {
         blocks_json.push(']');
 
         format!(
-            "{{\"balls\":{},\"blocks\":{},\"navy_grey_count\":{},\"navy_blue_count\":{},\"background_color\":[{},{},{}]}}",
+            "{{\"balls\":{},\"blocks\":{},\"navy_grey_count\":{},\"navy_blue_count\":{},\"background_color\":[{},{},{}],\"average_speed\":{:.2}}}",
             balls_json, blocks_json, self.navy_grey_count, self.navy_blue_count, 
-            self.background_color.0, self.background_color.1, self.background_color.2
+            self.background_color.0, self.background_color.1, self.background_color.2,
+            self.get_average_speed()
         )
+    }
+
+    pub fn increase_speed(&mut self, factor: f64) {
+        for ball in &mut self.balls {
+            ball.dx *= factor;
+            ball.dy *= factor;
+        }
+    }
+    
+    pub fn decrease_speed(&mut self, factor: f64) {
+        for ball in &mut self.balls {
+            ball.dx /= factor;
+            ball.dy /= factor;
+        }
+    }
+    
+    pub fn get_average_speed(&self) -> f64 {
+        if self.balls.is_empty() {
+            return 0.0;
+        }
+        
+        let total_speed: f64 = self.balls.iter()
+            .map(|ball| (ball.dx * ball.dx + ball.dy * ball.dy).sqrt())
+            .sum();
+        
+        total_speed / self.balls.len() as f64
     }
 }
 

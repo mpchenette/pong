@@ -56,6 +56,69 @@
         .randomize-button:active {
             transform: translateY(-50%) scale(0.95);
         }
+        
+        .speed-controls {
+            position: fixed;
+            right: 20px;
+            top: 30%;
+            transform: translateY(-50%);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .speed-button {
+            background: #2d3748;
+            color: white;
+            border: 2px solid #4a5568;
+            border-radius: 8px;
+            padding: 10px 14px;
+            font-family: monospace;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            min-width: 120px;
+        }
+        
+        .speed-button:hover {
+            background: #4a5568;
+            border-color: #718096;
+        }
+        
+        .speed-button:active {
+            transform: scale(0.95);
+        }
+        
+        .speed-button.increase {
+            border-color: #48bb78;
+            color: #68d391;
+        }
+        
+        .speed-button.increase:hover {
+            background: #22543d;
+            border-color: #68d391;
+        }
+        
+        .speed-button.decrease {
+            border-color: #f56565;
+            color: #fc8181;
+        }
+        
+        .speed-button.decrease:hover {
+            background: #742a2a;
+            border-color: #fc8181;
+        }
+        
+        .speed-display {
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            text-align: center;
+            border: 1px solid #4a5568;
+        }
+        
         .metrics-panel {
             position: fixed;
             left: 20px;
@@ -184,6 +247,16 @@
     
     <canvas id="gameCanvas" width="400" height="400"></canvas>
 
+    <div class="speed-controls">
+        <div class="speed-display" id="speedDisplay">Speed: 2.5</div>
+        <button class="speed-button increase" id="increaseSpeedButton">
+            ⬆️ Faster
+        </button>
+        <button class="speed-button decrease" id="decreaseSpeedButton">
+            ⬇️ Slower
+        </button>
+    </div>
+
     <button class="randomize-button" id="randomizeButton">
         Randomize<br>Background<br><small>(for everyone)</small>
     </button>
@@ -195,6 +268,9 @@
         const navyGreySpan = document.getElementById('navyGreyCount');
         const navyBlueSpan = document.getElementById('navyBlueCount');
         const randomizeButton = document.getElementById('randomizeButton');
+        const increaseSpeedButton = document.getElementById('increaseSpeedButton');
+        const decreaseSpeedButton = document.getElementById('decreaseSpeedButton');
+        const speedDisplay = document.getElementById('speedDisplay');
 
         // WebSocket connection to Rust server
         let gameState = null;
@@ -219,6 +295,32 @@
                 })
                 .catch(error => {
                     console.error('Error requesting background randomization:', error);
+                });
+        });
+
+        // Add click event listener to increase speed button
+        increaseSpeedButton.addEventListener('click', function() {
+            fetch('/increase-speed')
+                .then(response => {
+                    if (response.ok) {
+                        console.log('Speed increase requested');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error requesting speed increase:', error);
+                });
+        });
+
+        // Add click event listener to decrease speed button
+        decreaseSpeedButton.addEventListener('click', function() {
+            fetch('/decrease-speed')
+                .then(response => {
+                    if (response.ok) {
+                        console.log('Speed decrease requested');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error requesting speed decrease:', error);
                 });
         });
 
@@ -328,6 +430,11 @@
             
             navyGreySpan.textContent = gameState.navy_grey_count;
             navyBlueSpan.textContent = gameState.navy_blue_count;
+            
+            // Update speed display with actual server speed
+            if (gameState.average_speed !== undefined) {
+                speedDisplay.textContent = `Speed: ${gameState.average_speed.toFixed(1)}`;
+            }
         }
 
         function updateBackground() {
