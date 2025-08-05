@@ -5,19 +5,70 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Block Breaker Simulation</title>
     <style>
+        :root {
+            /* Dark theme colors (default) */
+            --bg-color: #222;
+            --text-color: #ffffff;
+            --canvas-bg: #000000;
+            --metrics-bg: rgba(0, 0, 0, 0.8);
+            --metrics-border: #444;
+            --metrics-text: #ccc;
+            --metrics-title: #fff;
+            --metrics-section-title: #9ca3af;
+            --metrics-value: #60a5fa;
+            --button-bg: #4a5568;
+            --button-border: #718096;
+            --button-hover-bg: #718096;
+            --button-hover-border: #a0aec0;
+            --speed-button-bg: #2d3748;
+            --speed-button-border: #4a5568;
+            --speed-button-hover-bg: #4a5568;
+            --speed-button-hover-border: #718096;
+            --toggle-bg: #374151;
+            --toggle-border: #6b7280;
+            --toggle-text: #f9fafb;
+        }
+        
+        body.light-theme {
+            /* Light theme colors */
+            --bg-color: #f8fafc;
+            --text-color: #1f2937;
+            --canvas-bg: #ffffff;
+            --metrics-bg: rgba(255, 255, 255, 0.95);
+            --metrics-border: #d1d5db;
+            --metrics-text: #374151;
+            --metrics-title: #111827;
+            --metrics-section-title: #6b7280;
+            --metrics-value: #2563eb;
+            --button-bg: #e5e7eb;
+            --button-border: #9ca3af;
+            --button-hover-bg: #d1d5db;
+            --button-hover-border: #6b7280;
+            --speed-button-bg: #f3f4f6;
+            --speed-button-border: #d1d5db;
+            --speed-button-hover-bg: #e5e7eb;
+            --speed-button-hover-border: #9ca3af;
+            --toggle-bg: #e5e7eb;
+            --toggle-border: #9ca3af;
+            --toggle-text: #374151;
+        }
+        
         body {
             margin: 0;
             padding: 20px;
-            background: #222;
-            color: white;
+            background: var(--bg-color);
+            color: var(--text-color);
             font-family: monospace;
             display: flex;
             flex-direction: column;
             align-items: center;
             position: relative;
+            transition: background-color 0.3s ease, color 0.3s ease;
         }
         canvas {
-            background: black;
+            background: var(--canvas-bg);
+            border: 2px solid var(--metrics-border);
+            transition: background-color 0.3s ease, border-color 0.3s ease;
         }
         .count-info {
             display: flex;
@@ -39,9 +90,9 @@
             right: 20px;
             top: 50%;
             transform: translateY(-50%);
-            background: #4a5568;
-            color: white;
-            border: 2px solid #718096;
+            background: var(--button-bg);
+            color: var(--text-color);
+            border: 2px solid var(--button-border);
             border-radius: 8px;
             padding: 12px 16px;
             font-family: monospace;
@@ -50,10 +101,35 @@
             transition: all 0.2s;
         }
         .randomize-button:hover {
-            background: #718096;
-            border-color: #a0aec0;
+            background: var(--button-hover-bg);
+            border-color: var(--button-hover-border);
         }
         .randomize-button:active {
+            transform: translateY(-50%) scale(0.95);
+        }
+        
+        .theme-toggle {
+            position: fixed;
+            right: 20px;
+            top: 70%;
+            transform: translateY(-50%);
+            background: var(--toggle-bg);
+            color: var(--toggle-text);
+            border: 2px solid var(--toggle-border);
+            border-radius: 8px;
+            padding: 12px 16px;
+            font-family: monospace;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            min-width: 120px;
+            text-align: center;
+        }
+        .theme-toggle:hover {
+            background: var(--button-hover-bg);
+            border-color: var(--button-hover-border);
+        }
+        .theme-toggle:active {
             transform: translateY(-50%) scale(0.95);
         }
         
@@ -68,9 +144,9 @@
         }
         
         .speed-button {
-            background: #2d3748;
-            color: white;
-            border: 2px solid #4a5568;
+            background: var(--speed-button-bg);
+            color: var(--text-color);
+            border: 2px solid var(--speed-button-border);
             border-radius: 8px;
             padding: 10px 14px;
             font-family: monospace;
@@ -81,8 +157,8 @@
         }
         
         .speed-button:hover {
-            background: #4a5568;
-            border-color: #718096;
+            background: var(--speed-button-hover-bg);
+            border-color: var(--speed-button-hover-border);
         }
         
         .speed-button:active {
@@ -110,41 +186,44 @@
         }
         
         .speed-display {
-            background: rgba(0, 0, 0, 0.7);
-            color: white;
+            background: var(--metrics-bg);
+            color: var(--text-color);
             padding: 6px 10px;
             border-radius: 4px;
             font-size: 12px;
             text-align: center;
-            border: 1px solid #4a5568;
+            border: 1px solid var(--metrics-border);
+            transition: all 0.3s ease;
         }
         
         .metrics-panel {
             position: fixed;
             left: 20px;
             top: 20px;
-            background: rgba(0, 0, 0, 0.8);
-            border: 1px solid #444;
+            background: var(--metrics-bg);
+            border: 1px solid var(--metrics-border);
             border-radius: 8px;
             padding: 15px;
             font-family: monospace;
             font-size: 12px;
-            color: #ccc;
+            color: var(--metrics-text);
             max-width: 300px;
             z-index: 100;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
         }
         .metrics-title {
-            color: #fff;
+            color: var(--metrics-title);
             font-weight: bold;
             margin-bottom: 10px;
-            border-bottom: 1px solid #444;
+            border-bottom: 1px solid var(--metrics-border);
             padding-bottom: 5px;
         }
         .metrics-section {
             margin-bottom: 10px;
         }
         .metrics-section-title {
-            color: #9ca3af;
+            color: var(--metrics-section-title);
             font-weight: bold;
             margin-bottom: 3px;
         }
@@ -153,7 +232,7 @@
             margin-bottom: 2px;
         }
         .metric-value {
-            color: #60a5fa;
+            color: var(--metrics-value);
         }
         .error-value {
             color: #f87171;
@@ -175,14 +254,14 @@
             top: 50%;
             transform: translateY(-50%);
             margin-left: 10px;
-            background: rgba(0, 0, 0, 0.9);
-            color: white;
+            background: var(--metrics-bg);
+            color: var(--text-color);
             padding: 8px 12px;
             border-radius: 4px;
             font-size: 11px;
             white-space: nowrap;
             z-index: 1000;
-            border: 1px solid #555;
+            border: 1px solid var(--metrics-border);
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
         }
         .metric-item[data-tooltip]:hover::before {
@@ -196,7 +275,7 @@
             height: 0;
             border-top: 5px solid transparent;
             border-bottom: 5px solid transparent;
-            border-right: 5px solid rgba(0, 0, 0, 0.9);
+            border-right: 5px solid var(--metrics-bg);
             z-index: 1001;
         }
     </style>
@@ -261,6 +340,10 @@
         Randomize<br>Background<br><small>(for everyone)</small>
     </button>
 
+    <button class="theme-toggle" id="themeToggle">
+        🌙 Dark Mode
+    </button>
+
     <script>
         // WebSocket client for Block Breaker simulation
         const canvas = document.getElementById('gameCanvas');
@@ -271,6 +354,44 @@
         const increaseSpeedButton = document.getElementById('increaseSpeedButton');
         const decreaseSpeedButton = document.getElementById('decreaseSpeedButton');
         const speedDisplay = document.getElementById('speedDisplay');
+        const themeToggle = document.getElementById('themeToggle');
+
+        // Theme management
+        let isDarkTheme = true; // Default to dark theme
+
+        // Load saved theme preference
+        function loadThemePreference() {
+            const savedTheme = localStorage.getItem('blockBreakerTheme');
+            if (savedTheme === 'light') {
+                isDarkTheme = false;
+                document.body.classList.add('light-theme');
+                themeToggle.textContent = '☀️ Light Mode';
+            } else {
+                isDarkTheme = true;
+                document.body.classList.remove('light-theme');
+                themeToggle.textContent = '🌙 Dark Mode';
+            }
+        }
+
+        // Toggle theme
+        function toggleTheme() {
+            isDarkTheme = !isDarkTheme;
+            if (isDarkTheme) {
+                document.body.classList.remove('light-theme');
+                themeToggle.textContent = '🌙 Dark Mode';
+                localStorage.setItem('blockBreakerTheme', 'dark');
+            } else {
+                document.body.classList.add('light-theme');
+                themeToggle.textContent = '☀️ Light Mode';
+                localStorage.setItem('blockBreakerTheme', 'light');
+            }
+        }
+
+        // Initialize theme
+        loadThemePreference();
+
+        // Add theme toggle event listener
+        themeToggle.addEventListener('click', toggleTheme);
 
         // WebSocket connection to Rust server
         let gameState = null;
@@ -400,8 +521,13 @@
         function draw() {
             if (!gameState) return;
 
-            // Clear canvas
-            ctx.fillStyle = '#000000';
+            // Get current theme colors
+            const isLightTheme = document.body.classList.contains('light-theme');
+            const canvasBg = isLightTheme ? '#ffffff' : '#000000';
+            const ballBorderColor = isLightTheme ? '#000000' : '#ffffff';
+
+            // Clear canvas with theme-appropriate color
+            ctx.fillStyle = canvasBg;
             ctx.fillRect(0, 0, 400, 400);
 
             // Draw blocks
@@ -418,8 +544,8 @@
                 ctx.fillStyle = `rgb(${ball.color[0]}, ${ball.color[1]}, ${ball.color[2]})`;
                 ctx.fillRect(ball.x, ball.y, 10, 10);
                 
-                // Add a border to make balls more visible
-                ctx.strokeStyle = '#ffffff';
+                // Add a border to make balls more visible - adjust color based on theme
+                ctx.strokeStyle = ballBorderColor;
                 ctx.lineWidth = 1;
                 ctx.strokeRect(ball.x, ball.y, 10, 10);
             });
